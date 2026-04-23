@@ -6,8 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.stock import Stock
 from app.models.user import User
-from app.services.stock_service import _normalize_ticker, get_or_create_stock
-
+from app.services.stock_service import _normalize_ticker
+from app.services.stock_service import get_or_create_stock
 
 # --- unit tests for pure helpers ---
 
@@ -35,7 +35,8 @@ def test_normalize_ticker_strips_whitespace():
 async def test_get_or_create_stock_creates_in_db(db_session: AsyncSession, monkeypatch):
     # Stub out yfinance so the test never hits the network
     async def _fake_fetch(ticker_raw, db):
-        from app.services.stock_service import _normalize_ticker, _infer_market_currency
+        from app.services.stock_service import _infer_market_currency
+        from app.services.stock_service import _normalize_ticker
         ticker = _normalize_ticker(ticker_raw)
         market, currency = _infer_market_currency(ticker)
         stock = Stock(ticker=ticker, name="Fake Corp", market=market, currency=currency)

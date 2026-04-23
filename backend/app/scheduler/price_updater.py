@@ -5,14 +5,16 @@ inside the same asyncio event loop as the web server.
 """
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime
+from datetime import timezone
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 
 from app.config import settings
 from app.database import AsyncSessionLocal
-from app.services.stock_service import batch_update_prices, update_exchange_rate
+from app.services.stock_service import batch_update_prices
+from app.services.stock_service import update_exchange_rate
 
 logger = logging.getLogger(__name__)
 

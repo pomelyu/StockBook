@@ -4,10 +4,12 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import func, select
+from sqlalchemy import func
+from sqlalchemy import select
 
 from app.config import settings
-from app.database import AsyncSessionLocal, engine
+from app.database import AsyncSessionLocal
+from app.database import engine
 from app.models.stock import Stock
 from app.models.user import User
 from app.scheduler.price_updater import create_scheduler
@@ -88,11 +90,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from app.api.admin import router as admin_router  # noqa: E402
 # Register routers
 from app.api.auth import router as auth_router  # noqa: E402
 from app.api.stocks import router as stocks_router  # noqa: E402
 from app.api.watchlist import router as watchlist_router  # noqa: E402
-from app.api.admin import router as admin_router  # noqa: E402
 
 PREFIX = "/api/v1"
 app.include_router(auth_router, prefix=PREFIX)

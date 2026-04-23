@@ -1,4 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter
+from fastapi import Depends
+from fastapi import HTTPException
+from fastapi import status
 from jose import JWTError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -6,13 +9,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_user
 from app.database import get_db
 from app.models.user import User
-from app.schemas.auth import LoginRequest, RefreshRequest, TokenResponse, UserResponse
-from app.services.auth_service import (
-    create_access_token,
-    create_refresh_token,
-    decode_token,
-    verify_password,
-)
+from app.schemas.auth import LoginRequest
+from app.schemas.auth import RefreshRequest
+from app.schemas.auth import TokenResponse
+from app.schemas.auth import UserResponse
+from app.services.auth_service import create_access_token
+from app.services.auth_service import create_refresh_token
+from app.services.auth_service import decode_token
+from app.services.auth_service import verify_password
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 

@@ -8,14 +8,18 @@ import uuid
 
 import pytest
 import pytest_asyncio
-from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from httpx import ASGITransport
+from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import async_sessionmaker
+from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.database import get_db
 from app.main import app
 from app.models import Base
 from app.models.user import User
-from app.services.auth_service import create_access_token, hash_password
+from app.services.auth_service import create_access_token
+from app.services.auth_service import hash_password
 
 TEST_DB_URL = "sqlite+aiosqlite:///:memory:"
 

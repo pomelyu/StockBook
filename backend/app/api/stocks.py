@@ -1,4 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter
+from fastapi import Depends
+from fastapi import HTTPException
+from fastapi import Query
+from fastapi import status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -7,7 +11,8 @@ from app.database import get_db
 from app.models.stock import Stock
 from app.models.user import User
 from app.schemas.stock import StockResponse
-from app.services.stock_service import get_or_create_stock, search_stocks
+from app.services.stock_service import get_or_create_stock
+from app.services.stock_service import search_stocks
 
 router = APIRouter(prefix="/stocks", tags=["stocks"])
 

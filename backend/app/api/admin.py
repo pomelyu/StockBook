@@ -1,11 +1,13 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
+from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_superuser
 from app.database import get_db
 from app.models.user import User
 from app.services.stock_catalog_service import sync_catalog
-from app.services.stock_service import batch_update_prices, update_exchange_rate
+from app.services.stock_service import batch_update_prices
+from app.services.stock_service import update_exchange_rate
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 

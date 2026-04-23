@@ -6,7 +6,8 @@ asyncio.to_thread() to avoid blocking the event loop.
 
 import asyncio
 import logging
-from datetime import datetime, timezone
+from datetime import datetime
+from datetime import timezone
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
