@@ -121,7 +121,7 @@ async def get_or_create_stock(ticker_raw: str, db: AsyncSession) -> Stock | None
 
     name: str | None = None
     if info:
-        name = info.get("shortName") or info.get("longName")
+        name = info.get("longName") or info.get("shortName")
         # Prefer yfinance currency when available
         yf_currency = info.get("currency")
         if yf_currency:

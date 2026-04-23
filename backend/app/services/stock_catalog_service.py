@@ -121,11 +121,14 @@ async def _fetch_nasdaq_other(client: httpx.AsyncClient) -> list[dict]:
 
 
 async def sync_catalog(db: AsyncSession) -> dict[str, int]:
-    """Fetch full stock catalog from TWSE and NASDAQ, insert new entries into DB.
+    """Fetch full stock catalog from TWSE and NASDAQ, upsert into DB.
 
-    - Existing tickers are skipped (names are not overwritten to preserve manual edits).
-    - New stocks are inserted with track_price=False.
-    - Returns {"added": N, "skipped": N}.
+    - New tickers are inserted with track_price=False.
+    - Existing tickers have their name updated from the authoritative catalog source.
+      This corrects names that yfinance may have populated with wrong values
+      (e.g. TW ETFs returning the fund manager name instead of the ETF name).
+    - market, currency, track_price are never overwritten.
+    - Returns {"added": N, "updated": N}.
     """
     async with httpx.AsyncClient() as client:
         results = await asyncio.gather(
@@ -145,30 +148,38 @@ async def sync_catalog(db: AsyncSession) -> dict[str, int]:
 
     if not all_stocks:
         logger.warning("Catalog sync: no stocks fetched from any source")
-        return {"added": 0, "skipped": 0}
+        return {"added": 0, "updated": 0}
 
-    # Fetch all existing tickers in one query
-    existing_result = await db.execute(select(Stock.ticker))
-    existing_tickers: set[str] = {row[0] for row in existing_result}
+    # Build lookup: ticker → catalog name
+    catalog: dict[str, str] = {s["ticker"]: s["name"] for s in all_stocks}
 
-    new_stocks = [
-        Stock(
-            ticker=s["ticker"],
-            name=s["name"],
-            market=s["market"],
-            currency=s["currency"],
-            track_price=False,
-        )
-        for s in all_stocks
-        if s["ticker"] not in existing_tickers
-    ]
+    # Fetch existing stocks in one query
+    existing_result = await db.execute(select(Stock))
+    existing_stocks: dict[str, Stock] = {s.ticker: s for s in existing_result.scalars()}
 
-    skipped = len(all_stocks) - len(new_stocks)
+    new_stocks: list[Stock] = []
+    updated = 0
+
+    for item in all_stocks:
+        ticker = item["ticker"]
+        if ticker in existing_stocks:
+            stock = existing_stocks[ticker]
+            if stock.name != item["name"]:
+                stock.name = item["name"]
+                updated += 1
+        else:
+            new_stocks.append(Stock(
+                ticker=ticker,
+                name=item["name"],
+                market=item["market"],
+                currency=item["currency"],
+                track_price=False,
+            ))
 
     for i in range(0, len(new_stocks), _BATCH_SIZE):
         db.add_all(new_stocks[i : i + _BATCH_SIZE])
         await db.flush()
 
     await db.commit()
-    logger.info("Catalog sync complete: %d added, %d skipped", len(new_stocks), skipped)
-    return {"added": len(new_stocks), "skipped": skipped}
+    logger.info("Catalog sync complete: %d added, %d updated", len(new_stocks), updated)
+    return {"added": len(new_stocks), "updated": updated}

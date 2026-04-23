@@ -59,7 +59,7 @@ async def test_sync_catalog_inserts_new_stocks(db_session: AsyncSession, monkeyp
     result = await sync_catalog(db_session)
 
     assert result["added"] == 2
-    assert result["skipped"] == 0
+    assert result["updated"] == 0
 
     tickers_in_db = {row[0] for row in (await db_session.execute(select(Stock.ticker)))}
     assert "2330.TW" in tickers_in_db
@@ -81,9 +81,9 @@ async def test_sync_catalog_new_stocks_have_track_price_false(db_session: AsyncS
 
 
 @pytest.mark.asyncio
-async def test_sync_catalog_skips_existing_tickers(db_session: AsyncSession, monkeypatch):
-    # Pre-insert a stock
-    existing = Stock(ticker="GOOG", name="Alphabet", market="US", currency="USD", track_price=True)
+async def test_sync_catalog_updates_existing_name(db_session: AsyncSession, monkeypatch):
+    # Pre-insert a stock with a wrong name (e.g. from yfinance fallback)
+    existing = Stock(ticker="GOOG", name="Wrong Name From yfinance", market="US", currency="USD", track_price=True)
     db_session.add(existing)
     await db_session.commit()
 
@@ -97,13 +97,13 @@ async def test_sync_catalog_skips_existing_tickers(db_session: AsyncSession, mon
 
     result = await sync_catalog(db_session)
 
-    assert result["added"] == 1   # only NVDA
-    assert result["skipped"] == 1  # GOOG skipped
+    assert result["added"] == 1    # only NVDA
+    assert result["updated"] == 1  # GOOG name corrected
 
-    # Existing GOOG should NOT have its name overwritten
+    # Existing GOOG name should be updated from catalog
     goog = (await db_session.execute(select(Stock).where(Stock.ticker == "GOOG"))).scalar_one()
-    assert goog.name == "Alphabet"
-    assert goog.track_price is True  # unchanged
+    assert goog.name == "Alphabet Inc."
+    assert goog.track_price is True  # track_price unchanged
 
 
 @pytest.mark.asyncio
@@ -159,7 +159,7 @@ async def test_admin_catalog_sync_endpoint(
     assert resp.status_code == 200
     data = resp.json()
     assert "added" in data
-    assert "skipped" in data
+    assert "updated" in data
 
 
 @pytest.mark.asyncio
