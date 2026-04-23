@@ -17,6 +17,7 @@ export async function listDividends(params?: {
   ticker?: string
   page?: number
   page_size?: number
+  include_all?: boolean
 }): Promise<Page<Dividend>> {
   const res = await client.get<Page<Dividend>>('/dividends/', { params })
   return res.data

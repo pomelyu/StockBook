@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { usePortfolio } from '../hooks/usePortfolio'
 import AddRecordModal from '../components/portfolio/AddRecordModal'
 import MarketUpdateBadge from '../components/ui/MarketUpdateBadge'
@@ -27,12 +28,15 @@ function PnlBadge({ value, pct }: { value: number | null; pct?: number | null })
   )
 }
 
-function PositionRow({ pos, isTW }: { pos: Position; isTW: boolean }) {
+function PositionRow({ pos, isTW, onSelect }: { pos: Position; isTW: boolean; onSelect: (ticker: string) => void }) {
   const shareDecimals = isTW ? 0 : 3
   return (
     <>
       {/* Desktop row */}
-      <tr className="hidden sm:table-row border-b border-gray-100 hover:bg-gray-50">
+      <tr
+        onClick={() => onSelect(pos.ticker)}
+        className="hidden sm:table-row border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
+      >
         <td className="px-4 py-3">
           <div className="font-medium text-gray-900 text-sm">{pos.ticker}</div>
           {pos.stockName && <div className="text-xs text-gray-500 truncate max-w-[160px]">{pos.stockName}</div>}
@@ -51,7 +55,10 @@ function PositionRow({ pos, isTW }: { pos: Position; isTW: boolean }) {
       </tr>
 
       {/* Mobile card */}
-      <div className="sm:hidden border border-gray-200 rounded-xl p-4 space-y-2">
+      <div
+        onClick={() => onSelect(pos.ticker)}
+        className="sm:hidden border border-gray-200 rounded-xl p-4 space-y-2 cursor-pointer active:bg-gray-50"
+      >
         <div className="flex items-start justify-between">
           <div>
             <div className="font-medium text-gray-900">{pos.ticker}</div>
@@ -86,7 +93,7 @@ function PositionRow({ pos, isTW }: { pos: Position; isTW: boolean }) {
   )
 }
 
-function PositionTable({ title, positions }: { title: string; positions: Position[] }) {
+function PositionTable({ title, positions, onSelect }: { title: string; positions: Position[]; onSelect: (ticker: string) => void }) {
   const isTW = title === 'TW'
   return (
     <div className="mb-6">
@@ -106,7 +113,7 @@ function PositionTable({ title, positions }: { title: string; positions: Positio
           </thead>
           <tbody>
             {positions.map((pos) => (
-              <PositionRow key={pos.ticker} pos={pos} isTW={isTW} />
+              <PositionRow key={pos.ticker} pos={pos} isTW={isTW} onSelect={onSelect} />
             ))}
           </tbody>
         </table>
@@ -114,7 +121,7 @@ function PositionTable({ title, positions }: { title: string; positions: Positio
       {/* Mobile card list */}
       <div className="sm:hidden space-y-3">
         {positions.map((pos) => (
-          <PositionRow key={pos.ticker} pos={pos} isTW={isTW} />
+          <PositionRow key={pos.ticker} pos={pos} isTW={isTW} onSelect={onSelect} />
         ))}
       </div>
     </div>
@@ -122,6 +129,7 @@ function PositionTable({ title, positions }: { title: string; positions: Positio
 }
 
 export default function HoldingsPage() {
+  const navigate = useNavigate()
   const { data, isLoading, isError, marketUpdateTimes } = usePortfolio()
   const [showModal, setShowModal] = useState(false)
 
@@ -197,8 +205,8 @@ export default function HoldingsPage() {
       {/* Position tables by market */}
       {!isLoading && !isError && (
         <>
-          {twPositions.length > 0 && <PositionTable title="TW" positions={twPositions} />}
-          {usPositions.length > 0 && <PositionTable title="US" positions={usPositions} />}
+          {twPositions.length > 0 && <PositionTable title="TW" positions={twPositions} onSelect={(t) => navigate(`/holdings/${t}`)} />}
+          {usPositions.length > 0 && <PositionTable title="US" positions={usPositions} onSelect={(t) => navigate(`/holdings/${t}`)} />}
         </>
       )}
 

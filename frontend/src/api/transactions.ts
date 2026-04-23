@@ -18,6 +18,7 @@ export async function listTransactions(params?: {
   transaction_type?: 'BUY' | 'SELL'
   page?: number
   page_size?: number
+  include_all?: boolean
 }): Promise<Page<Transaction>> {
   const res = await client.get<Page<Transaction>>('/transactions/', { params })
   return res.data

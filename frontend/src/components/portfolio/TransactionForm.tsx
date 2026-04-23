@@ -1,33 +1,36 @@
 import { useState, useEffect, useRef } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { createTransaction } from '../../api/transactions'
+import { createTransaction, updateTransaction } from '../../api/transactions'
 import { searchStocks } from '../../api/stocks'
-import type { TransactionCreate } from '../../types/transaction'
+import type { Transaction, TransactionCreate, TransactionUpdate } from '../../types/transaction'
 import type { Stock } from '../../types/watchlist'
 
 interface Props {
   onSuccess: () => void
   onCancel: () => void
   currentPosition?: (ticker: string) => number
+  initialData?: Transaction
 }
 
-export default function TransactionForm({ onSuccess, onCancel, currentPosition }: Props) {
+export default function TransactionForm({ onSuccess, onCancel, currentPosition, initialData }: Props) {
+  const isEdit = !!initialData
   const queryClient = useQueryClient()
-  const [txType, setTxType] = useState<'BUY' | 'SELL'>('BUY')
-  const [ticker, setTicker] = useState('')
-  const [quantity, setQuantity] = useState('')
-  const [price, setPrice] = useState('')
-  const [fee, setFee] = useState('0')
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
-  const [note, setNote] = useState('')
+  const [txType, setTxType] = useState<'BUY' | 'SELL'>(initialData?.transaction_type ?? 'BUY')
+  const [ticker, setTicker] = useState(initialData?.ticker ?? '')
+  const [quantity, setQuantity] = useState(initialData?.quantity ?? '')
+  const [price, setPrice] = useState(initialData?.price ?? '')
+  const [fee, setFee] = useState(initialData?.fee ?? '0')
+  const [date, setDate] = useState(initialData?.transaction_date ?? new Date().toISOString().slice(0, 10))
+  const [note, setNote] = useState(initialData?.note ?? '')
   const [error, setError] = useState<string | null>(null)
 
-  // Stock search autocomplete
+  // Stock search autocomplete (only for create mode)
   const [searchResults, setSearchResults] = useState<Stock[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
+    if (isEdit) return
     if (ticker.length < 1) { setSearchResults([]); return }
     if (searchTimeout.current) clearTimeout(searchTimeout.current)
     searchTimeout.current = setTimeout(async () => {
@@ -35,19 +38,22 @@ export default function TransactionForm({ onSuccess, onCancel, currentPosition }
       setSearchResults(results)
       setShowSuggestions(results.length > 0)
     }, 300)
-  }, [ticker])
+  }, [ticker, isEdit])
 
   const position = currentPosition ? currentPosition(ticker.toUpperCase()) : null
 
   const mutation = useMutation({
-    mutationFn: (data: TransactionCreate) => createTransaction(data),
+    mutationFn: (data: TransactionCreate | TransactionUpdate) =>
+      isEdit
+        ? updateTransaction(initialData!.id, data as TransactionUpdate)
+        : createTransaction(data as TransactionCreate),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['transactions', 'all'] })
+      queryClient.invalidateQueries({ queryKey: ['transactions'] })
       onSuccess()
     },
     onError: (err: unknown) => {
       const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
-      setError(msg ?? '新增失敗，請確認資料後重試')
+      setError(msg ?? (isEdit ? '修改失敗，請確認資料後重試' : '新增失敗，請確認資料後重試'))
     },
   })
 
@@ -102,9 +108,10 @@ export default function TransactionForm({ onSuccess, onCancel, currentPosition }
           onChange={(e) => setTicker(e.target.value.toUpperCase())}
           onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
           placeholder="例：2330、AAPL"
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          disabled={isEdit}
+          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
         />
-        {showSuggestions && (
+        {!isEdit && showSuggestions && (
           <ul className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
             {searchResults.map((s) => (
               <li key={s.id}>
@@ -211,7 +218,7 @@ export default function TransactionForm({ onSuccess, onCancel, currentPosition }
           disabled={mutation.isPending}
           className="flex-1 rounded-lg bg-blue-600 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
         >
-          {mutation.isPending ? '新增中…' : '確認新增'}
+          {mutation.isPending ? (isEdit ? '修改中…' : '新增中…') : (isEdit ? '確認修改' : '確認新增')}
         </button>
       </div>
     </form>

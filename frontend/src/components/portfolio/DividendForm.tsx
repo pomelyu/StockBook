@@ -1,13 +1,14 @@
 import { useState, useEffect, useRef } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { createDividend } from '../../api/dividends'
+import { createDividend, updateDividend } from '../../api/dividends'
 import { searchStocks } from '../../api/stocks'
-import type { DividendCreate, DividendType } from '../../types/dividend'
+import type { Dividend, DividendCreate, DividendUpdate, DividendType } from '../../types/dividend'
 import type { Stock } from '../../types/watchlist'
 
 interface Props {
   onSuccess: () => void
   onCancel: () => void
+  initialData?: Dividend
 }
 
 const TYPE_LABELS: Record<DividendType, string> = {
@@ -16,23 +17,25 @@ const TYPE_LABELS: Record<DividendType, string> = {
   DRIP: '股息再投入',
 }
 
-export default function DividendForm({ onSuccess, onCancel }: Props) {
+export default function DividendForm({ onSuccess, onCancel, initialData }: Props) {
+  const isEdit = !!initialData
   const queryClient = useQueryClient()
-  const [divType, setDivType] = useState<DividendType>('CASH')
-  const [ticker, setTicker] = useState('')
-  const [amount, setAmount] = useState('')
-  const [currency, setCurrency] = useState('TWD')
-  const [sharesReceived, setSharesReceived] = useState('')
-  const [exDate, setExDate] = useState(new Date().toISOString().slice(0, 10))
-  const [note, setNote] = useState('')
+  const [divType, setDivType] = useState<DividendType>(initialData?.dividend_type ?? 'CASH')
+  const [ticker, setTicker] = useState(initialData?.ticker ?? '')
+  const [amount, setAmount] = useState(initialData?.amount ?? '')
+  const [currency, setCurrency] = useState(initialData?.currency ?? 'TWD')
+  const [sharesReceived, setSharesReceived] = useState(initialData?.shares_received ?? '')
+  const [exDate, setExDate] = useState(initialData?.ex_dividend_date ?? new Date().toISOString().slice(0, 10))
+  const [note, setNote] = useState(initialData?.note ?? '')
   const [error, setError] = useState<string | null>(null)
 
-  // Stock search autocomplete
+  // Stock search autocomplete (only for create mode)
   const [searchResults, setSearchResults] = useState<Stock[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
+    if (isEdit) return
     if (ticker.length < 1) { setSearchResults([]); return }
     if (searchTimeout.current) clearTimeout(searchTimeout.current)
     searchTimeout.current = setTimeout(async () => {
@@ -40,17 +43,20 @@ export default function DividendForm({ onSuccess, onCancel }: Props) {
       setSearchResults(results)
       setShowSuggestions(results.length > 0)
     }, 300)
-  }, [ticker])
+  }, [ticker, isEdit])
 
   const mutation = useMutation({
-    mutationFn: (data: DividendCreate) => createDividend(data),
+    mutationFn: (data: DividendCreate | DividendUpdate) =>
+      isEdit
+        ? updateDividend(initialData!.id, data as DividendUpdate)
+        : createDividend(data as DividendCreate),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['dividends', 'all'] })
+      queryClient.invalidateQueries({ queryKey: ['dividends'] })
       onSuccess()
     },
     onError: (err: unknown) => {
       const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
-      setError(msg ?? '新增失敗，請確認資料後重試')
+      setError(msg ?? (isEdit ? '修改失敗，請確認資料後重試' : '新增失敗，請確認資料後重試'))
     },
   })
 
@@ -104,9 +110,10 @@ export default function DividendForm({ onSuccess, onCancel }: Props) {
           onChange={(e) => setTicker(e.target.value.toUpperCase())}
           onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
           placeholder="例：2330、AAPL"
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          disabled={isEdit}
+          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
         />
-        {showSuggestions && (
+        {!isEdit && showSuggestions && (
           <ul className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
             {searchResults.map((s) => (
               <li key={s.id}>
@@ -217,7 +224,7 @@ export default function DividendForm({ onSuccess, onCancel }: Props) {
           disabled={mutation.isPending}
           className="flex-1 rounded-lg bg-blue-600 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
         >
-          {mutation.isPending ? '新增中…' : '確認新增'}
+          {mutation.isPending ? (isEdit ? '修改中…' : '新增中…') : (isEdit ? '確認修改' : '確認新增')}
         </button>
       </div>
     </form>
