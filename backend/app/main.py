@@ -93,13 +93,17 @@ app.add_middleware(
 from app.api.admin import router as admin_router  # noqa: E402
 # Register routers
 from app.api.auth import router as auth_router  # noqa: E402
+from app.api.dividends import router as dividends_router  # noqa: E402
 from app.api.stocks import router as stocks_router  # noqa: E402
+from app.api.transactions import router as transactions_router  # noqa: E402
 from app.api.watchlist import router as watchlist_router  # noqa: E402
 
 PREFIX = "/api/v1"
 app.include_router(auth_router, prefix=PREFIX)
 app.include_router(stocks_router, prefix=PREFIX)
 app.include_router(watchlist_router, prefix=PREFIX)
+app.include_router(transactions_router, prefix=PREFIX)
+app.include_router(dividends_router, prefix=PREFIX)
 app.include_router(admin_router, prefix=PREFIX)
 
 

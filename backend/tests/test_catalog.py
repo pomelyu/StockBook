@@ -150,7 +150,7 @@ async def test_admin_catalog_sync_endpoint(
     )
     # Also patch sync_catalog called via the endpoint
     async def fake_sync(db):
-        return {"added": 1, "skipped": 0}
+        return {"added": 1, "updated": 0}
 
     monkeypatch.setattr("app.api.admin.sync_catalog", fake_sync)
 
