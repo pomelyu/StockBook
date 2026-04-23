@@ -7,13 +7,18 @@ export default function Navbar() {
   const { user, logout } = useAuth()
   const location = useLocation()
 
+  const navItems = [
+    ...NAV_ITEMS,
+    ...(user?.is_superuser ? [{ label: 'Admin', path: '/admin' }] : []),
+  ]
+
   return (
     <nav className="border-b border-gray-200 bg-white px-4 py-3 lg:px-6">
       <div className="mx-auto flex max-w-5xl items-center justify-between">
         <div className="flex items-center gap-6">
           <span className="text-lg font-bold text-blue-600">StockBook</span>
           <div className="hidden gap-4 lg:flex">
-            {NAV_ITEMS.map((item) => (
+            {navItems.map((item) => (
               <Link
                 key={item.path}
                 to={item.path}

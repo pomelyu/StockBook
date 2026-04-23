@@ -1,14 +1,21 @@
 import { Link, useLocation } from 'react-router-dom'
+import { useAuth } from '../../context/AuthContext'
 
-const TABS = [{ label: 'Watchlist', path: '/', icon: '★' }]
+const BASE_TABS = [{ label: 'Watchlist', path: '/', icon: '★' }]
 
 export default function BottomTabBar() {
+  const { user } = useAuth()
   const location = useLocation()
+
+  const tabs = [
+    ...BASE_TABS,
+    ...(user?.is_superuser ? [{ label: 'Admin', path: '/admin', icon: '⚙' }] : []),
+  ]
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 border-t border-gray-200 bg-white lg:hidden">
       <div className="flex">
-        {TABS.map((tab) => {
+        {tabs.map((tab) => {
           const active = location.pathname === tab.path
           return (
             <Link
