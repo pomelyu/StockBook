@@ -4,12 +4,14 @@ import { listAllDividends } from '../api/dividends'
 import { batchGetPrices } from '../api/stocks'
 import { calculatePortfolio } from '../utils/pnl'
 import type { PortfolioSummary } from '../utils/pnl'
+import { getMarketUpdateTimes } from '../utils/marketTime'
 
 export function usePortfolio(): {
   data: PortfolioSummary | undefined
   isLoading: boolean
   isError: boolean
   refetch: () => void
+  marketUpdateTimes: { us: string | null; tw: string | null }
 } {
   const queryClient = useQueryClient()
 
@@ -56,11 +58,18 @@ export function usePortfolio(): {
       ? calculatePortfolio(transactions, dividends, prices)
       : undefined
 
+  const marketUpdateTimes = getMarketUpdateTimes(
+    Object.entries(pricesQuery.data ?? {}).map(([ticker, stock]) => ({
+      price_updated_at: stock.price_updated_at ?? null,
+      isTW: ticker.endsWith('.TW'),
+    }))
+  )
+
   function refetch() {
     queryClient.invalidateQueries({ queryKey: ['transactions', 'all'] })
     queryClient.invalidateQueries({ queryKey: ['dividends', 'all'] })
     queryClient.invalidateQueries({ queryKey: ['prices'] })
   }
 
-  return { data, isLoading, isError, refetch }
+  return { data, isLoading, isError, refetch, marketUpdateTimes }
 }

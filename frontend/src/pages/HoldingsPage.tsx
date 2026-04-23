@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { usePortfolio } from '../hooks/usePortfolio'
 import AddRecordModal from '../components/portfolio/AddRecordModal'
+import MarketUpdateBadge from '../components/ui/MarketUpdateBadge'
 import type { Position } from '../utils/pnl'
 
 function fmtNumber(n: number, decimals = 2): string {
@@ -85,7 +86,7 @@ function PositionRow({ pos }: { pos: Position }) {
 }
 
 export default function HoldingsPage() {
-  const { data, isLoading, isError } = usePortfolio()
+  const { data, isLoading, isError, marketUpdateTimes } = usePortfolio()
   const [showModal, setShowModal] = useState(false)
 
   function currentPosition(ticker: string): number {
@@ -97,11 +98,30 @@ export default function HoldingsPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-6 pb-24 lg:pb-6">
-      <h1 className="mb-4 text-xl font-bold text-gray-900">持倉總覽</h1>
+      <div className="mb-4 flex items-center justify-between">
+        <h1 className="text-xl font-bold text-gray-900">持倉總覽</h1>
+        <MarketUpdateBadge us={marketUpdateTimes.us} tw={marketUpdateTimes.tw} />
+      </div>
 
       {/* Summary cards */}
       {data && (
-        <div className="mb-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="mb-6 grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <div className="rounded-xl border border-gray-200 bg-white p-4">
+            <div className="text-xs text-gray-500 mb-1">總成本</div>
+            <span className="text-sm font-medium text-gray-700">{fmtNumber(data.totalCost)}</span>
+          </div>
+          <div className="rounded-xl border border-gray-200 bg-white p-4">
+            <div className="text-xs text-gray-500 mb-1">總市值</div>
+            <span className="text-sm font-medium text-gray-700">
+              {data.totalValue !== null ? fmtNumber(data.totalValue) : '—'}
+            </span>
+          </div>
+          <div className="col-span-2 sm:col-span-1 rounded-xl border border-gray-200 bg-white p-4">
+            <div className="text-xs text-gray-500 mb-1">總損益</div>
+            <PnlBadge
+              value={data.totalUnrealizedPnl + data.totalRealizedGains + data.totalCashDividends}
+            />
+          </div>
           <div className="rounded-xl border border-gray-200 bg-white p-4">
             <div className="text-xs text-gray-500 mb-1">未實現損益</div>
             <PnlBadge value={data.totalUnrealizedPnl} />

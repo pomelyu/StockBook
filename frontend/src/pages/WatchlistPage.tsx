@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getWatchlist, addToWatchlist, removeFromWatchlist, searchStocks } from '../api/watchlist'
+import MarketUpdateBadge from '../components/ui/MarketUpdateBadge'
+import { getMarketUpdateTimes } from '../utils/marketTime'
 import type { Stock } from '../types/watchlist'
 
 function formatPrice(price: number | null, currency: string) {
@@ -138,10 +140,20 @@ export default function WatchlistPage() {
     )
   }
 
+  const marketUpdateTimes = getMarketUpdateTimes(
+    items.map((item) => ({
+      price_updated_at: item.price_updated_at,
+      isTW: item.market === 'TW',
+    }))
+  )
+
   return (
     <div className="mx-auto max-w-5xl px-4 py-6 pb-20 lg:pb-6">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-900">Watchlist</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-xl font-bold text-gray-900">Watchlist</h1>
+          <MarketUpdateBadge us={marketUpdateTimes.us} tw={marketUpdateTimes.tw} />
+        </div>
         <button
           onClick={() => setShowAddModal(true)}
           className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"

@@ -21,6 +21,8 @@ export interface Position {
 
 export interface PortfolioSummary {
   positions: Position[]
+  totalCost: number
+  totalValue: number | null  // null if any held position is missing a price
   totalUnrealizedPnl: number
   totalRealizedGains: number
   totalCashDividends: number
@@ -176,9 +178,15 @@ export function calculatePortfolio(
     return a.ticker.localeCompare(b.ticker)
   })
 
+  // Only count currently held positions for cost / value
+  const heldPositions = positions.filter(p => p.sharesHeld > 1e-9)
+  const totalCost = heldPositions.reduce((s, p) => s + p.avgCostPerShare * p.sharesHeld, 0)
+  const hasNullPrice = heldPositions.some(p => p.currentPrice === null)
+  const totalValue = hasNullPrice ? null : heldPositions.reduce((s, p) => s + (p.currentPrice! * p.sharesHeld), 0)
+
   const totalUnrealizedPnl = positions.reduce((s, p) => s + (p.unrealizedPnl ?? 0), 0)
   const totalRealizedGains = positions.reduce((s, p) => s + p.realizedGains, 0)
   const totalCashDividends = positions.reduce((s, p) => s + p.cashDividends, 0)
 
-  return { positions, totalUnrealizedPnl, totalRealizedGains, totalCashDividends }
+  return { positions, totalCost, totalValue, totalUnrealizedPnl, totalRealizedGains, totalCashDividends }
 }
