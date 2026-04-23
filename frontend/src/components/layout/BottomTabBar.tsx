@@ -1,7 +1,10 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 
-const BASE_TABS = [{ label: 'Watchlist', path: '/', icon: '★' }]
+const BASE_TABS = [
+  { label: 'Holdings', path: '/', icon: '📊' },
+  { label: 'Watchlist', path: '/watchlist', icon: '★' },
+]
 
 export default function BottomTabBar() {
   const { user } = useAuth()

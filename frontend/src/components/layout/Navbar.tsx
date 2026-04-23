@@ -1,14 +1,17 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 
-const NAV_ITEMS = [{ label: 'Watchlist', path: '/' }]
+const BASE_NAV_ITEMS = [
+  { label: 'Holdings', path: '/' },
+  { label: 'Watchlist', path: '/watchlist' },
+]
 
 export default function Navbar() {
   const { user, logout } = useAuth()
   const location = useLocation()
 
   const navItems = [
-    ...NAV_ITEMS,
+    ...BASE_NAV_ITEMS,
     ...(user?.is_superuser ? [{ label: 'Admin', path: '/admin' }] : []),
   ]
 

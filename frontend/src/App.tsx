@@ -6,6 +6,7 @@ import Navbar from './components/layout/Navbar'
 import BottomTabBar from './components/layout/BottomTabBar'
 import LoginPage from './pages/LoginPage'
 import WatchlistPage from './pages/WatchlistPage'
+import HoldingsPage from './pages/HoldingsPage'
 import AdminPage from './pages/AdminPage'
 
 const queryClient = new QueryClient()
@@ -18,7 +19,8 @@ function AppLayout() {
       <Navbar />
       <main className="min-h-[calc(100vh-57px)]">
         <Routes>
-          <Route path="/" element={<WatchlistPage />} />
+          <Route path="/" element={<HoldingsPage />} />
+          <Route path="/watchlist" element={<WatchlistPage />} />
           {user.is_superuser && (
             <Route path="/admin" element={<AdminPage />} />
           )}

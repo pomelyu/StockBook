@@ -40,6 +40,33 @@ async def search(
 
 
 @router.get(
+    "/prices",
+    response_model=dict[str, StockResponse],
+    summary="Batch get stock prices",
+    response_description="各 ticker 的股票資料與最新快取股價",
+)
+async def batch_get_prices(
+    tickers: str = Query(..., description="逗號分隔的 ticker 列表，如 2330.TW,AAPL,MSFT"),
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    """
+    批次取得多支股票的現價資料。
+
+    - 一次 API call 取得多個 ticker 的 `last_price`，供前端 P&L 計算使用
+    - 只回傳 DB 快取中已存在的 ticker，不觸發 yfinance fallback
+    - `last_price` 由 APScheduler 定期更新（非即時）
+    - 不存在的 ticker 不會出現在回傳結果中
+    """
+    ticker_list = [t.strip().upper() for t in tickers.split(",") if t.strip()]
+    if not ticker_list:
+        return {}
+    result = await db.execute(select(Stock).where(Stock.ticker.in_(ticker_list)))
+    stocks = result.scalars().all()
+    return {s.ticker: s for s in stocks}
+
+
+@router.get(
     "/{ticker}",
     response_model=StockResponse,
     summary="Get stock by ticker",

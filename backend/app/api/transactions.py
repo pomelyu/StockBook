@@ -55,6 +55,7 @@ async def list_transactions(
     transaction_type: str | None = Query(None, description="過濾交易類型：BUY 或 SELL"),
     page: int = Query(1, ge=1, description="頁碼（從 1 開始）"),
     page_size: int = Query(20, ge=1, le=100, description="每頁筆數（最大 100）"),
+    include_all: bool = Query(False, description="若為 True，忽略分頁回傳所有紀錄（前端 P&L 計算用）"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -63,7 +64,8 @@ async def list_transactions(
 
     - `ticker`：只回傳指定股票的紀錄（例：`2330.TW` 或 `AAPL`）
     - `transaction_type`：只回傳 BUY 或 SELL
-    - 結果依 `transaction_date` 降序排列
+    - `include_all=true`：忽略分頁，回傳全部紀錄（前端 FIFO 計算使用）
+    - 結果依 `transaction_date` 升序排列（FIFO 計算需要時序正確）
     """
     base_q = (
         select(Transaction)
@@ -79,11 +81,13 @@ async def list_transactions(
     total = await db.scalar(
         select(func.count()).select_from(base_q.subquery())
     )
-    result = await db.execute(
-        base_q.order_by(Transaction.transaction_date.desc())
-        .offset((page - 1) * page_size)
-        .limit(page_size)
-    )
+    ordered_q = base_q.order_by(Transaction.transaction_date.asc())
+    if include_all:
+        result = await db.execute(ordered_q)
+    else:
+        result = await db.execute(
+            ordered_q.offset((page - 1) * page_size).limit(page_size)
+        )
     items = [_to_response(tx) for tx in result.scalars().all()]
     return Page(items=items, total=total or 0, page=page, page_size=page_size)
 

@@ -53,6 +53,7 @@ async def list_dividends(
     ticker: str | None = Query(None, description="過濾指定股票代號（大小寫不敏感）"),
     page: int = Query(1, ge=1, description="頁碼（從 1 開始）"),
     page_size: int = Query(20, ge=1, le=100, description="每頁筆數（最大 100）"),
+    include_all: bool = Query(False, description="若為 True，忽略分頁回傳所有紀錄（前端 P&L 計算用）"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -60,7 +61,8 @@ async def list_dividends(
     取得目前登入使用者的股息紀錄，支援分頁與過濾。
 
     - `ticker`：只回傳指定股票的股息紀錄
-    - 結果依 `ex_dividend_date` 降序排列
+    - `include_all=true`：忽略分頁，回傳全部紀錄（前端 FIFO 計算使用）
+    - 結果依 `ex_dividend_date` 升序排列（FIFO 計算需要時序正確）
     - `dividend_type` 為 CASH（現金股息）、STOCK（配股）、DRIP（股息再投入）
     """
     base_q = (
@@ -75,11 +77,13 @@ async def list_dividends(
     total = await db.scalar(
         select(func.count()).select_from(base_q.subquery())
     )
-    result = await db.execute(
-        base_q.order_by(Dividend.ex_dividend_date.desc())
-        .offset((page - 1) * page_size)
-        .limit(page_size)
-    )
+    ordered_q = base_q.order_by(Dividend.ex_dividend_date.asc())
+    if include_all:
+        result = await db.execute(ordered_q)
+    else:
+        result = await db.execute(
+            ordered_q.offset((page - 1) * page_size).limit(page_size)
+        )
     items = [_to_response(d) for d in result.scalars().all()]
     return Page(items=items, total=total or 0, page=page, page_size=page_size)
 
