@@ -77,6 +77,33 @@ backend/app/
 - 台股 ticker 在進入 DB 前正規化：`2330` → `2330.TW`（在 `stock_service` 處理）。
 - yfinance 呼叫一律用 `yf.download(tickers_list)` 批次，不逐一呼叫。
 
+### API Documentation（OpenAPI / Swagger）
+每個 endpoint 必須加上 FastAPI 可自動生成文件的注釋，格式如下：
+
+```python
+@router.post(
+    "/path",
+    response_model=SomeResponse,
+    summary="Short title",                        # 端點列表標題
+    response_description="成功回應的說明",
+)
+async def handler(...):
+    """
+    詳細說明端點的用途。
+
+    - 條列重要行為（錯誤回應、注意事項）
+    """
+```
+
+Pydantic schema 的每個欄位加上 `Field(description=...)`：
+
+```python
+class MyRequest(BaseModel):
+    field: str = Field(..., description="欄位用途說明")
+```
+
+啟動後端後可在 `http://localhost:8000/docs` 確認文件是否正確生成。
+
 ### Auth
 - JWT Bearer token，`python-jose` + `passlib[bcrypt]`
 - Phase 1：hardcoded seed user，從 `.env` 讀取（`SEED_USERNAME`, `SEED_PASSWORD`）
@@ -167,6 +194,28 @@ ENABLE_SCHEDULER=true
 ENVIRONMENT=development
 BACKEND_CORS_ORIGINS=http://localhost:5173,https://your-app.web.app
 ```
+
+---
+
+## Known Issues
+
+效能或安全性上的已知潛在問題，記錄於此供未來參考。
+
+### ~~[PERF] stocks table 無限成長導致 scheduler 更新範圍擴大~~ ✅ 已解決
+- **解法**：`stocks` 加入 `track_price: bool`（預設 `False`）。`batch_update_prices()` 只更新 `track_price=True` 的股票；加入 watchlist 或建立 transaction 時才設為 `True`。
+- **catalog 改採預載方式**：`stock_catalog_service.py` 在 server 首次啟動時從 TWSE / TPEX / NASDAQ 批次匯入完整清單，搜尋完全走 DB，不再有「搜尋觸發寫入」的副作用。
+
+### [SEC] JWT 存放於 localStorage
+- **位置**：`frontend/src/context/AuthContext.tsx`、`frontend/src/api/client.ts`
+- **問題**：`localStorage` 可被同源 JavaScript 讀取，若前端有 XSS 漏洞，token 會被竊取。相較之下，`HttpOnly Cookie` 對 JavaScript 不可見，防禦力更強。
+- **現況影響**：≤5 位受信任使用者，且前端無第三方 script，風險極低。
+- **未來改法**：改用 `HttpOnly` + `SameSite=Strict` Cookie 儲存 token，並調整後端的 `/auth/login` 和 `/auth/refresh` 端點改為 set-cookie 回應。
+
+### [PERF] APScheduler 在多 worker 部署下會重複執行
+- **位置**：`backend/app/scheduler/price_updater.py`、`backend/app/main.py`
+- **問題**：Scheduler 內嵌於 FastAPI process。若 Cloud Run 橫向擴展為多個 instance，每個 instance 都有獨立的 scheduler，會同時對 yfinance 發出重複請求並寫入重複的 `exchange_rates` 資料。
+- **現況影響**：Cloud Run 目前設定 `min-instances=1`，單一 instance 不受影響。
+- **未來改法**：改用外部 scheduler（Cloud Scheduler + Cloud Tasks），或搭配分散式鎖（Redis `SET NX`）確保同一時間只有一個 worker 執行 job。
 
 ---
 
