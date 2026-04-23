@@ -1,0 +1,12 @@
+@import "tailwindcss";
+
+@theme {
+  --color-profit: #16a34a;
+  --color-loss: #dc2626;
+  --color-brand: #2563eb;
+}
+
+body {
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+}
