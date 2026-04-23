@@ -27,7 +27,8 @@ function PnlBadge({ value, pct }: { value: number | null; pct?: number | null })
   )
 }
 
-function PositionRow({ pos }: { pos: Position }) {
+function PositionRow({ pos, isTW }: { pos: Position; isTW: boolean }) {
+  const shareDecimals = isTW ? 0 : 3
   return (
     <>
       {/* Desktop row */}
@@ -36,7 +37,7 @@ function PositionRow({ pos }: { pos: Position }) {
           <div className="font-medium text-gray-900 text-sm">{pos.ticker}</div>
           {pos.stockName && <div className="text-xs text-gray-500 truncate max-w-[160px]">{pos.stockName}</div>}
         </td>
-        <td className="px-4 py-3 text-right text-sm text-gray-700">{fmtNumber(pos.sharesHeld, 0)}</td>
+        <td className="px-4 py-3 text-right text-sm text-gray-700">{fmtNumber(pos.sharesHeld, shareDecimals)}</td>
         <td className="px-4 py-3 text-right text-sm text-gray-700">{fmtNumber(pos.avgCostPerShare)}</td>
         <td className="px-4 py-3 text-right text-sm text-gray-700">
           {pos.currentPrice !== null ? fmtNumber(pos.currentPrice) : '—'}
@@ -64,7 +65,7 @@ function PositionRow({ pos }: { pos: Position }) {
         <div className="grid grid-cols-3 gap-2 text-xs text-gray-600 pt-1 border-t border-gray-100">
           <div>
             <div className="text-gray-400">持股數</div>
-            <div>{fmtNumber(pos.sharesHeld, 0)}</div>
+            <div>{fmtNumber(pos.sharesHeld, shareDecimals)}</div>
           </div>
           <div>
             <div className="text-gray-400">均攤成本</div>
@@ -85,6 +86,41 @@ function PositionRow({ pos }: { pos: Position }) {
   )
 }
 
+function PositionTable({ title, positions }: { title: string; positions: Position[] }) {
+  const isTW = title === 'TW'
+  return (
+    <div className="mb-6">
+      <h2 className="mb-2 text-sm font-semibold text-gray-500 uppercase tracking-wide">{title}</h2>
+      {/* Desktop table */}
+      <div className="hidden sm:block rounded-xl border border-gray-200 bg-white overflow-hidden">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-gray-200 bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
+              <th className="px-4 py-3 text-left">股票</th>
+              <th className="px-4 py-3 text-right">持股數</th>
+              <th className="px-4 py-3 text-right">均攤成本</th>
+              <th className="px-4 py-3 text-right">現價</th>
+              <th className="px-4 py-3 text-right">未實現損益</th>
+              <th className="px-4 py-3 text-right">已實現損益</th>
+            </tr>
+          </thead>
+          <tbody>
+            {positions.map((pos) => (
+              <PositionRow key={pos.ticker} pos={pos} isTW={isTW} />
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {/* Mobile card list */}
+      <div className="sm:hidden space-y-3">
+        {positions.map((pos) => (
+          <PositionRow key={pos.ticker} pos={pos} isTW={isTW} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function HoldingsPage() {
   const { data, isLoading, isError, marketUpdateTimes } = usePortfolio()
   const [showModal, setShowModal] = useState(false)
@@ -95,6 +131,8 @@ export default function HoldingsPage() {
   }
 
   const heldPositions = data?.positions.filter(p => p.sharesHeld > 1e-9) ?? []
+  const twPositions = heldPositions.filter(p => p.ticker.endsWith('.TW'))
+  const usPositions = heldPositions.filter(p => !p.ticker.endsWith('.TW'))
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-6 pb-24 lg:pb-6">
@@ -156,36 +194,12 @@ export default function HoldingsPage() {
         </div>
       )}
 
-      {/* Desktop table */}
-      {!isLoading && heldPositions.length > 0 && (
-        <div className="hidden sm:block rounded-xl border border-gray-200 bg-white overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-200 bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
-                <th className="px-4 py-3 text-left">股票</th>
-                <th className="px-4 py-3 text-right">持股數</th>
-                <th className="px-4 py-3 text-right">均攤成本</th>
-                <th className="px-4 py-3 text-right">現價</th>
-                <th className="px-4 py-3 text-right">未實現損益</th>
-                <th className="px-4 py-3 text-right">已實現損益</th>
-              </tr>
-            </thead>
-            <tbody>
-              {heldPositions.map((pos) => (
-                <PositionRow key={pos.ticker} pos={pos} />
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* Mobile card list */}
-      {!isLoading && heldPositions.length > 0 && (
-        <div className="sm:hidden space-y-3">
-          {heldPositions.map((pos) => (
-            <PositionRow key={pos.ticker} pos={pos} />
-          ))}
-        </div>
+      {/* Position tables by market */}
+      {!isLoading && !isError && (
+        <>
+          {twPositions.length > 0 && <PositionTable title="TW" positions={twPositions} />}
+          {usPositions.length > 0 && <PositionTable title="US" positions={usPositions} />}
+        </>
       )}
 
       {/* FAB */}

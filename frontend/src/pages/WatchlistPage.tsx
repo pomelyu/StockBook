@@ -109,6 +109,87 @@ function AddStockModal({ onClose }: { onClose: () => void }) {
   )
 }
 
+import type { WatchlistItem } from '../types/watchlist'
+
+function MarketSection({
+  title,
+  items,
+  onRemove,
+  isPending,
+}: {
+  title: string
+  items: WatchlistItem[]
+  onRemove: (ticker: string) => void
+  isPending: boolean
+}) {
+  return (
+    <div className="mb-6">
+      <h2 className="mb-2 text-sm font-semibold text-gray-500 uppercase tracking-wide">{title}</h2>
+      {/* Desktop table */}
+      <div className="hidden overflow-hidden rounded-xl border border-gray-200 sm:block">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500">
+            <tr>
+              <th className="px-4 py-3 text-left">Ticker</th>
+              <th className="px-4 py-3 text-left">Name</th>
+              <th className="px-4 py-3 text-right">Price</th>
+              <th className="px-4 py-3 text-right">Updated</th>
+              <th className="px-4 py-3" />
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100 bg-white">
+            {items.map((item) => (
+              <tr key={item.id} className="hover:bg-gray-50">
+                <td className="px-4 py-3 font-semibold text-gray-900">{item.ticker}</td>
+                <td className="px-4 py-3 text-gray-600">{item.name ?? '—'}</td>
+                <td className="px-4 py-3 text-right font-medium text-gray-900">
+                  {formatPrice(item.last_price, item.currency)}
+                </td>
+                <td className="px-4 py-3 text-right text-xs text-gray-400">
+                  {formatUpdated(item.price_updated_at)}
+                </td>
+                <td className="px-4 py-3 text-right">
+                  <button
+                    onClick={() => onRemove(item.ticker)}
+                    disabled={isPending}
+                    className="text-xs text-red-500 hover:text-red-700 disabled:opacity-40"
+                  >
+                    Remove
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {/* Mobile card list */}
+      <div className="space-y-3 sm:hidden">
+        {items.map((item) => (
+          <div key={item.id} className="rounded-xl border border-gray-200 bg-white p-4">
+            <div className="mb-2 flex items-center justify-between">
+              <span className="font-bold text-gray-900">{item.ticker}</span>
+              <button
+                onClick={() => onRemove(item.ticker)}
+                disabled={isPending}
+                className="text-xs text-red-500 disabled:opacity-40"
+              >
+                Remove
+              </button>
+            </div>
+            {item.name && <p className="mb-2 text-sm text-gray-500">{item.name}</p>}
+            <div className="flex items-center justify-between">
+              <span className="text-lg font-semibold text-gray-900">
+                {formatPrice(item.last_price, item.currency)}
+              </span>
+              <span className="text-xs text-gray-400">{formatUpdated(item.price_updated_at)}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function WatchlistPage() {
   const queryClient = useQueryClient()
   const [showAddModal, setShowAddModal] = useState(false)
@@ -147,6 +228,9 @@ export default function WatchlistPage() {
     }))
   )
 
+  const twItems = items.filter(i => i.market === 'TW')
+  const usItems = items.filter(i => i.market === 'US')
+
   return (
     <div className="mx-auto max-w-5xl px-4 py-6 pb-20 lg:pb-6">
       <div className="mb-6 flex items-center justify-between">
@@ -174,79 +258,8 @@ export default function WatchlistPage() {
         </div>
       ) : (
         <>
-          {/* Desktop table */}
-          <div className="hidden overflow-hidden rounded-xl border border-gray-200 sm:block">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                <tr>
-                  <th className="px-4 py-3 text-left">Ticker</th>
-                  <th className="px-4 py-3 text-left">Name</th>
-                  <th className="px-4 py-3 text-center">Market</th>
-                  <th className="px-4 py-3 text-right">Price</th>
-                  <th className="px-4 py-3 text-right">Updated</th>
-                  <th className="px-4 py-3" />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 bg-white">
-                {items.map((item) => (
-                  <tr key={item.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 font-semibold text-gray-900">{item.ticker}</td>
-                    <td className="px-4 py-3 text-gray-600">{item.name ?? '—'}</td>
-                    <td className="px-4 py-3 text-center">
-                      <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
-                        {item.market}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right font-medium text-gray-900">
-                      {formatPrice(item.last_price, item.currency)}
-                    </td>
-                    <td className="px-4 py-3 text-right text-xs text-gray-400">
-                      {formatUpdated(item.price_updated_at)}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <button
-                        onClick={() => removeMutation.mutate(item.ticker)}
-                        disabled={removeMutation.isPending}
-                        className="text-xs text-red-500 hover:text-red-700 disabled:opacity-40"
-                      >
-                        Remove
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Mobile card list */}
-          <div className="space-y-3 sm:hidden">
-            {items.map((item) => (
-              <div key={item.id} className="rounded-xl border border-gray-200 bg-white p-4">
-                <div className="mb-2 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-gray-900">{item.ticker}</span>
-                    <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500">
-                      {item.market}
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => removeMutation.mutate(item.ticker)}
-                    disabled={removeMutation.isPending}
-                    className="text-xs text-red-500 disabled:opacity-40"
-                  >
-                    Remove
-                  </button>
-                </div>
-                {item.name && <p className="mb-2 text-sm text-gray-500">{item.name}</p>}
-                <div className="flex items-center justify-between">
-                  <span className="text-lg font-semibold text-gray-900">
-                    {formatPrice(item.last_price, item.currency)}
-                  </span>
-                  <span className="text-xs text-gray-400">{formatUpdated(item.price_updated_at)}</span>
-                </div>
-              </div>
-            ))}
-          </div>
+          {twItems.length > 0 && <MarketSection title="TW" items={twItems} onRemove={(ticker) => removeMutation.mutate(ticker)} isPending={removeMutation.isPending} />}
+          {usItems.length > 0 && <MarketSection title="US" items={usItems} onRemove={(ticker) => removeMutation.mutate(ticker)} isPending={removeMutation.isPending} />}
         </>
       )}
 
