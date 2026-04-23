@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext'
 
 const BASE_NAV_ITEMS = [
   { label: 'Holdings', path: '/' },
+  { label: 'Closed', path: '/closed' },
   { label: 'Watchlist', path: '/watchlist' },
 ]
 

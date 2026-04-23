@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext'
 
 const BASE_TABS = [
   { label: 'Holdings', path: '/', icon: '📊' },
+  { label: 'Closed', path: '/closed', icon: '✓' },
   { label: 'Watchlist', path: '/watchlist', icon: '★' },
 ]
 
