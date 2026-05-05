@@ -19,7 +19,11 @@ class Settings(BaseSettings):
     ENABLE_SCHEDULER: bool = True
 
     ENVIRONMENT: str = "development"
-    BACKEND_CORS_ORIGINS: list[str] = ["http://localhost:5173"]
+    BACKEND_CORS_ORIGINS: str = "http://localhost:5173"
+
+    @property
+    def cors_origins(self) -> list[str]:
+        return [origin.strip() for origin in self.BACKEND_CORS_ORIGINS.split(",")]
 
     @property
     def is_production(self) -> bool:
