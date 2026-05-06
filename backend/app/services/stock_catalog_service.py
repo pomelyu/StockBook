@@ -58,7 +58,7 @@ async def _fetch_tw_otc(client: httpx.AsyncClient) -> list[dict]:
             code = (item.get("SecuritiesCompanyCode") or item.get("公司代號") or "").strip()
             name = (item.get("CompanyAbbreviation") or item.get("公司簡稱") or "").strip()
             if code and name:
-                stocks.append({"ticker": f"{code}.TW", "name": name, "market": "TW", "currency": "TWD"})
+                stocks.append({"ticker": f"{code}.TWO", "name": name, "market": "TW", "currency": "TWD"})
         logger.info("Fetched %d TW OTC stocks", len(stocks))
         return stocks
     except Exception as exc:

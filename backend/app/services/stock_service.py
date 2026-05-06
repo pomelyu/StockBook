@@ -22,6 +22,7 @@ def _normalize_ticker(ticker: str) -> str:
 
     Pure digits (e.g. "2330") are treated as Taiwan stocks → "2330.TW".
     Everything else is upper-cased and returned as-is.
+    Note: TPEX stocks (.TWO) require DB lookup — see get_or_create_stock.
     """
     t = ticker.strip().upper()
     if t.isdigit():
@@ -29,9 +30,31 @@ def _normalize_ticker(ticker: str) -> str:
     return t
 
 
+async def _resolve_tw_ticker(code: str, db: AsyncSession) -> tuple[str, dict | None]:
+    """For pure-digit input, resolve the correct .TW or .TWO suffix.
+
+    1. Check catalog DB for .TW then .TWO.
+    2. If not in catalog, probe yfinance with .TWO then .TW.
+    Returns (ticker, yfinance_info_or_None).
+    """
+    for suffix in (".TW", ".TWO"):
+        result = await db.execute(select(Stock).where(Stock.ticker == f"{code}{suffix}"))
+        if result.scalar_one_or_none() is not None:
+            return f"{code}{suffix}", None
+
+    # Not in catalog — probe yfinance to find the correct suffix
+    for suffix in (".TWO", ".TW"):
+        candidate = f"{code}{suffix}"
+        info = await asyncio.to_thread(_fetch_stock_info_sync, candidate)
+        if info is not None:
+            return candidate, info
+
+    return f"{code}.TW", None
+
+
 def _infer_market_currency(ticker: str) -> tuple[str, str]:
     """Return (market, currency) from a normalised ticker."""
-    if ticker.endswith(".TW"):
+    if ticker.endswith(".TW") or ticker.endswith(".TWO"):
         return "TW", "TWD"
     return "US", "USD"
 
@@ -110,14 +133,20 @@ def _fetch_exchange_rate_sync(from_currency: str, to_currency: str) -> float | N
 
 async def get_or_create_stock(ticker_raw: str, db: AsyncSession) -> Stock | None:
     """Return an existing Stock or create one after verifying via yfinance."""
-    ticker = _normalize_ticker(ticker_raw)
+    t = ticker_raw.strip().upper()
+    prefetched_info: dict | None = None
+
+    if t.isdigit():
+        ticker, prefetched_info = await _resolve_tw_ticker(t, db)
+    else:
+        ticker = _normalize_ticker(ticker_raw)
 
     result = await db.execute(select(Stock).where(Stock.ticker == ticker))
     stock = result.scalar_one_or_none()
     if stock:
         return stock
 
-    info = await asyncio.to_thread(_fetch_stock_info_sync, ticker)
+    info = prefetched_info or await asyncio.to_thread(_fetch_stock_info_sync, ticker)
     market, currency = _infer_market_currency(ticker)
 
     name: str | None = None
