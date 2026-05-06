@@ -93,11 +93,16 @@ function PositionRow({ pos, isTW, onSelect }: { pos: Position; isTW: boolean; on
   )
 }
 
-function PositionTable({ title, positions, onSelect }: { title: string; positions: Position[]; onSelect: (ticker: string) => void }) {
+function PositionTable({ title, positions, onSelect, exchangeRate }: { title: string; positions: Position[]; onSelect: (ticker: string) => void; exchangeRate?: number | null }) {
   const isTW = title === 'TW'
   return (
     <div className="mb-6">
-      <h2 className="mb-2 text-sm font-semibold text-gray-500 uppercase tracking-wide">{title}</h2>
+      <div className="mb-2 flex items-baseline gap-2">
+        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">{title}</h2>
+        {exchangeRate != null && (
+          <span className="text-xs text-gray-400">USD/TWD {exchangeRate.toFixed(2)}</span>
+        )}
+      </div>
       {/* Desktop table */}
       <div className="hidden sm:block rounded-xl border border-gray-200 bg-white overflow-hidden">
         <table className="w-full text-sm">
@@ -206,7 +211,7 @@ export default function HoldingsPage() {
       {!isLoading && !isError && (
         <>
           {twPositions.length > 0 && <PositionTable title="TW" positions={twPositions} onSelect={(t) => navigate(`/holdings/${t}`)} />}
-          {usPositions.length > 0 && <PositionTable title="US" positions={usPositions} onSelect={(t) => navigate(`/holdings/${t}`)} />}
+          {usPositions.length > 0 && <PositionTable title="US" positions={usPositions} onSelect={(t) => navigate(`/holdings/${t}`)} exchangeRate={data?.usdToTwd} />}
         </>
       )}
 
