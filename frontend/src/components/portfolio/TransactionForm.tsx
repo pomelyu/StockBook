@@ -10,13 +10,15 @@ interface Props {
   onCancel: () => void
   currentPosition?: (ticker: string) => number
   initialData?: Transaction
+  lockedTicker?: string
 }
 
-export default function TransactionForm({ onSuccess, onCancel, currentPosition, initialData }: Props) {
+export default function TransactionForm({ onSuccess, onCancel, currentPosition, initialData, lockedTicker }: Props) {
   const isEdit = !!initialData
+  const tickerLocked = !!lockedTicker && !isEdit
   const queryClient = useQueryClient()
   const [txType, setTxType] = useState<'BUY' | 'SELL'>(initialData?.transaction_type ?? 'BUY')
-  const [ticker, setTicker] = useState(initialData?.ticker ?? '')
+  const [ticker, setTicker] = useState(initialData?.ticker ?? lockedTicker ?? '')
   const [quantity, setQuantity] = useState(initialData?.quantity ?? '')
   const [price, setPrice] = useState(initialData?.price ?? '')
   const [fee, setFee] = useState(initialData?.fee ?? '0')
@@ -108,10 +110,10 @@ export default function TransactionForm({ onSuccess, onCancel, currentPosition, 
           onChange={(e) => setTicker(e.target.value.toUpperCase())}
           onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
           placeholder="例：2330、AAPL"
-          disabled={isEdit}
+          disabled={isEdit || tickerLocked}
           className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
         />
-        {!isEdit && showSuggestions && (
+        {!isEdit && !tickerLocked && showSuggestions && (
           <ul className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
             {searchResults.map((s) => (
               <li key={s.id}>

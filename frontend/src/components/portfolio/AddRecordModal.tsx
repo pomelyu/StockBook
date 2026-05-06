@@ -7,9 +7,10 @@ type Step = 'choose' | 'transaction' | 'dividend'
 interface Props {
   onClose: () => void
   currentPosition: (ticker: string) => number
+  lockedTicker?: string
 }
 
-export default function AddRecordModal({ onClose, currentPosition }: Props) {
+export default function AddRecordModal({ onClose, currentPosition, lockedTicker }: Props) {
   const [step, setStep] = useState<Step>('choose')
 
   function handleSuccess() {
@@ -71,6 +72,7 @@ export default function AddRecordModal({ onClose, currentPosition }: Props) {
             onSuccess={handleSuccess}
             onCancel={() => setStep('choose')}
             currentPosition={currentPosition}
+            lockedTicker={lockedTicker}
           />
         )}
 
@@ -78,6 +80,7 @@ export default function AddRecordModal({ onClose, currentPosition }: Props) {
           <DividendForm
             onSuccess={handleSuccess}
             onCancel={() => setStep('choose')}
+            lockedTicker={lockedTicker}
           />
         )}
       </div>

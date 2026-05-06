@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { usePortfolio } from '../hooks/usePortfolio'
 import { useStockHistory } from '../hooks/useStockHistory'
 import EditRecordModal from '../components/portfolio/EditRecordModal'
+import AddRecordModal from '../components/portfolio/AddRecordModal'
 import type { HistoryEntry } from '../hooks/useStockHistory'
 
 function fmtNumber(n: number, decimals = 0): string {
@@ -72,6 +73,7 @@ export default function StockDetailPage() {
   const { data: portfolio, isLoading: portfolioLoading } = usePortfolio()
   const { entries, isLoading: historyLoading } = useStockHistory(ticker ?? '')
   const [editingEntry, setEditingEntry] = useState<HistoryEntry | null>(null)
+  const [showAddModal, setShowAddModal] = useState(false)
 
   const position = portfolio?.positions.find(p => p.ticker === ticker)
 
@@ -179,12 +181,30 @@ export default function StockDetailPage() {
         )}
       </div>
 
+      {/* FAB */}
+      <button
+        onClick={() => setShowAddModal(true)}
+        className="fixed bottom-20 right-4 lg:bottom-6 lg:right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg text-2xl hover:bg-blue-700 active:scale-95 transition-transform"
+        aria-label="新增紀錄"
+      >
+        +
+      </button>
+
       {/* Edit modal */}
       {editingEntry && (
         <EditRecordModal
           entry={editingEntry}
           currentPosition={currentPosition}
           onClose={() => setEditingEntry(null)}
+        />
+      )}
+
+      {/* Add modal (locked to current ticker) */}
+      {showAddModal && (
+        <AddRecordModal
+          onClose={() => setShowAddModal(false)}
+          currentPosition={currentPosition}
+          lockedTicker={ticker}
         />
       )}
     </div>

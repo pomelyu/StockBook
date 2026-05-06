@@ -9,6 +9,7 @@ interface Props {
   onSuccess: () => void
   onCancel: () => void
   initialData?: Dividend
+  lockedTicker?: string
 }
 
 const TYPE_LABELS: Record<DividendType, string> = {
@@ -17,11 +18,12 @@ const TYPE_LABELS: Record<DividendType, string> = {
   DRIP: '股息再投入',
 }
 
-export default function DividendForm({ onSuccess, onCancel, initialData }: Props) {
+export default function DividendForm({ onSuccess, onCancel, initialData, lockedTicker }: Props) {
   const isEdit = !!initialData
+  const tickerLocked = !!lockedTicker && !isEdit
   const queryClient = useQueryClient()
   const [divType, setDivType] = useState<DividendType>(initialData?.dividend_type ?? 'CASH')
-  const [ticker, setTicker] = useState(initialData?.ticker ?? '')
+  const [ticker, setTicker] = useState(initialData?.ticker ?? lockedTicker ?? '')
   const [amount, setAmount] = useState(initialData?.amount ?? '')
   const [currency, setCurrency] = useState(initialData?.currency ?? 'TWD')
   const [sharesReceived, setSharesReceived] = useState(initialData?.shares_received ?? '')
@@ -110,10 +112,10 @@ export default function DividendForm({ onSuccess, onCancel, initialData }: Props
           onChange={(e) => setTicker(e.target.value.toUpperCase())}
           onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
           placeholder="例：2330、AAPL"
-          disabled={isEdit}
+          disabled={isEdit || tickerLocked}
           className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
         />
-        {!isEdit && showSuggestions && (
+        {!isEdit && !tickerLocked && showSuggestions && (
           <ul className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
             {searchResults.map((s) => (
               <li key={s.id}>
