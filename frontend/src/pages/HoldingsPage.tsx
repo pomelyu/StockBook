@@ -77,6 +77,14 @@ function PositionRow({ pos, isTW, onSelect, exchangeRate }: { pos: Position; isT
             <div className="text-xs text-gray-400">{toTwd(pos.realizedGains)}</div>
           )}
         </td>
+        <td className="px-4 py-3 text-right text-sm">
+          <span className={pos.cashDividends !== 0 ? 'text-green-600' : 'text-gray-400'}>
+            {fmtNumber(pos.cashDividends)}
+          </span>
+          {pos.cashDividends !== 0 && toTwd(pos.cashDividends) && (
+            <div className="text-xs text-gray-400">{toTwd(pos.cashDividends)}</div>
+          )}
+        </td>
       </tr>
 
       {/* Mobile card */}
@@ -127,6 +135,12 @@ function PositionRow({ pos, isTW, onSelect, exchangeRate }: { pos: Position; isT
             {toTwd(pos.realizedGains) && <span className="text-gray-400 ml-1">{toTwd(pos.realizedGains)}</span>}
           </div>
         )}
+        {pos.cashDividends !== 0 && (
+          <div className="text-xs text-gray-500">
+            配息：<span className="text-green-600">{fmtNumber(pos.cashDividends)}</span>
+            {toTwd(pos.cashDividends) && <span className="text-gray-400 ml-1">{toTwd(pos.cashDividends)}</span>}
+          </div>
+        )}
       </div>
     </>
   )
@@ -144,6 +158,7 @@ function PositionTable({ title, positions, onSelect, exchangeRate }: { title: st
     ? positions.reduce((s, p) => s + (p.unrealizedPnl ?? 0), 0)
     : null
   const subtotalRealized = positions.reduce((s, p) => s + p.realizedGains, 0)
+  const subtotalDividends = positions.reduce((s, p) => s + p.cashDividends, 0)
 
   return (
     <div className="mb-6">
@@ -165,6 +180,7 @@ function PositionTable({ title, positions, onSelect, exchangeRate }: { title: st
               <th className="px-4 py-3 text-right">總值</th>
               <th className="px-4 py-3 text-right">未實現損益</th>
               <th className="px-4 py-3 text-right">已實現損益</th>
+              <th className="px-4 py-3 text-right">配息</th>
             </tr>
           </thead>
           <tbody>
@@ -195,6 +211,10 @@ function PositionTable({ title, positions, onSelect, exchangeRate }: { title: st
                 {subtotalRealized !== null && toTwd(subtotalRealized) && (
                   <div className="text-xs text-gray-400 font-normal">{toTwd(subtotalRealized)}</div>
                 )}
+              </td>
+              <td className="px-4 py-3 text-right">
+                <span className="text-green-600 font-normal">{fmtNumber(subtotalDividends)}</span>
+                {toTwd(subtotalDividends) && <div className="text-xs text-gray-400 font-normal">{toTwd(subtotalDividends)}</div>}
               </td>
             </tr>
           </tfoot>
@@ -228,6 +248,13 @@ function PositionTable({ title, positions, onSelect, exchangeRate }: { title: st
               <PnlBadge value={subtotalRealized} />
               {subtotalRealized !== 0 && toTwd(subtotalRealized) && (
                 <div className="text-gray-400">{toTwd(subtotalRealized)}</div>
+              )}
+            </div>
+            <div>
+              <div className="text-gray-400">配息</div>
+              <span className={subtotalDividends !== 0 ? 'text-green-600 font-medium' : 'text-gray-600'}>{fmtNumber(subtotalDividends)}</span>
+              {subtotalDividends !== 0 && toTwd(subtotalDividends) && (
+                <div className="text-gray-400">{toTwd(subtotalDividends)}</div>
               )}
             </div>
           </div>
