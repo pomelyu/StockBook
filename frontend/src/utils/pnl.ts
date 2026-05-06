@@ -21,11 +21,18 @@ export interface Position {
 
 export interface PortfolioSummary {
   positions: Position[]
+  /** 以 TWD 計價的總成本（USD 持倉已換算） */
   totalCost: number
-  totalValue: number | null  // null if any held position is missing a price
+  /** 以 TWD 計價的總市值；若任一持倉缺少股價則為 null */
+  totalValue: number | null
+  /** 以 TWD 計價的總未實現損益 */
   totalUnrealizedPnl: number
+  /** 以 TWD 計價的總已實現損益 */
   totalRealizedGains: number
+  /** 以 TWD 計價的總現金股利 */
   totalCashDividends: number
+  /** 換算時使用的 USD→TWD 匯率（null 表示匯率尚未取得，合計數字含混合幣別） */
+  usdToTwd: number | null
 }
 
 // Unified event for sorting by date
@@ -81,7 +88,8 @@ function toEvents(transactions: Transaction[], dividends: Dividend[]): Event[] {
 export function calculatePortfolio(
   transactions: Transaction[],
   dividends: Dividend[],
-  prices: Record<string, { last_price: number | null; currency: string; name?: string | null }>
+  prices: Record<string, { last_price: number | null; currency: string; name?: string | null }>,
+  usdToTwd: number | null = null,
 ): PortfolioSummary {
   const events = toEvents(transactions, dividends)
 
@@ -178,15 +186,32 @@ export function calculatePortfolio(
     return a.ticker.localeCompare(b.ticker)
   })
 
+  // Convert an amount to TWD. If usdToTwd is unavailable, return as-is (mixed-currency fallback).
+  const toTwd = (amount: number, currency: string): number => {
+    if (currency === 'TWD') return amount
+    if (currency === 'USD' && usdToTwd !== null) return amount * usdToTwd
+    return amount  // unknown currency or missing rate — pass through unchanged
+  }
+
   // Only count currently held positions for cost / value
   const heldPositions = positions.filter(p => p.sharesHeld > 1e-9)
-  const totalCost = heldPositions.reduce((s, p) => s + p.avgCostPerShare * p.sharesHeld, 0)
+  const totalCost = heldPositions.reduce(
+    (s, p) => s + toTwd(p.avgCostPerShare * p.sharesHeld, p.currency), 0
+  )
   const hasNullPrice = heldPositions.some(p => p.currentPrice === null)
-  const totalValue = hasNullPrice ? null : heldPositions.reduce((s, p) => s + (p.currentPrice! * p.sharesHeld), 0)
+  const totalValue = hasNullPrice
+    ? null
+    : heldPositions.reduce((s, p) => s + toTwd(p.currentPrice! * p.sharesHeld, p.currency), 0)
 
-  const totalUnrealizedPnl = positions.reduce((s, p) => s + (p.unrealizedPnl ?? 0), 0)
-  const totalRealizedGains = positions.reduce((s, p) => s + p.realizedGains, 0)
-  const totalCashDividends = positions.reduce((s, p) => s + p.cashDividends, 0)
+  const totalUnrealizedPnl = positions.reduce(
+    (s, p) => s + toTwd(p.unrealizedPnl ?? 0, p.currency), 0
+  )
+  const totalRealizedGains = positions.reduce(
+    (s, p) => s + toTwd(p.realizedGains, p.currency), 0
+  )
+  const totalCashDividends = positions.reduce(
+    (s, p) => s + toTwd(p.cashDividends, p.currency), 0
+  )
 
-  return { positions, totalCost, totalValue, totalUnrealizedPnl, totalRealizedGains, totalCashDividends }
+  return { positions, totalCost, totalValue, totalUnrealizedPnl, totalRealizedGains, totalCashDividends, usdToTwd }
 }

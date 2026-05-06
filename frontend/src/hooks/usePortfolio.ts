@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { listAllTransactions } from '../api/transactions'
 import { listAllDividends } from '../api/dividends'
-import { batchGetPrices } from '../api/stocks'
+import { batchGetPrices, getExchangeRate } from '../api/stocks'
 import { calculatePortfolio } from '../utils/pnl'
 import type { PortfolioSummary } from '../utils/pnl'
 import { getMarketUpdateTimes } from '../utils/marketTime'
@@ -43,6 +43,13 @@ export function usePortfolio(): {
     refetchInterval: 60_000,
   })
 
+  const exchangeRateQuery = useQuery({
+    queryKey: ['exchange-rate', 'USD', 'TWD'],
+    queryFn: () => getExchangeRate('USD', 'TWD'),
+    staleTime: 5 * 60_000,
+    retry: false,  // missing rate is non-fatal; fall back to mixed-currency totals
+  })
+
   const isLoading = txQuery.isLoading || divQuery.isLoading || (tickers.length > 0 && pricesQuery.isLoading)
   const isError = txQuery.isError || divQuery.isError
 
@@ -53,9 +60,11 @@ export function usePortfolio(): {
     }
   }
 
+  const usdToTwd = exchangeRateQuery.data?.rate ?? null
+
   const data =
     !isLoading && !isError
-      ? calculatePortfolio(transactions, dividends, prices)
+      ? calculatePortfolio(transactions, dividends, prices, usdToTwd)
       : undefined
 
   const marketUpdateTimes = getMarketUpdateTimes(
@@ -69,6 +78,7 @@ export function usePortfolio(): {
     queryClient.invalidateQueries({ queryKey: ['transactions', 'all'] })
     queryClient.invalidateQueries({ queryKey: ['dividends', 'all'] })
     queryClient.invalidateQueries({ queryKey: ['prices'] })
+    queryClient.invalidateQueries({ queryKey: ['exchange-rate'] })
   }
 
   return { data, isLoading, isError, refetch, marketUpdateTimes }

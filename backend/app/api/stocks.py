@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.database import get_db
+from app.models.exchange_rate import ExchangeRate
 from app.models.stock import Stock
 from app.models.user import User
 from app.schemas.stock import StockResponse
@@ -15,6 +16,42 @@ from app.services.stock_service import get_or_create_stock
 from app.services.stock_service import search_stocks
 
 router = APIRouter(prefix="/stocks", tags=["stocks"])
+
+
+@router.get(
+    "/exchange-rate",
+    response_model=dict,
+    summary="Get latest exchange rate",
+    response_description="最新匯率資料",
+)
+async def get_exchange_rate(
+    from_currency: str = Query("USD", description="來源幣別"),
+    to_currency: str = Query("TWD", description="目標幣別"),
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    """
+    取得最新的匯率資料（由 APScheduler 定期更新）。
+
+    - 回傳 `rate`（from_currency → to_currency 的換算比率）
+    - 若 DB 尚無資料（首次啟動前 scheduler 尚未執行），回傳 **404**
+    """
+    result = await db.execute(
+        select(ExchangeRate)
+        .where(ExchangeRate.from_currency == from_currency.upper())
+        .where(ExchangeRate.to_currency == to_currency.upper())
+        .order_by(ExchangeRate.fetched_at.desc())
+        .limit(1)
+    )
+    row = result.scalar_one_or_none()
+    if not row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Exchange rate not found")
+    return {
+        "from_currency": row.from_currency,
+        "to_currency": row.to_currency,
+        "rate": float(row.rate),
+        "fetched_at": row.fetched_at.isoformat(),
+    }
 
 
 @router.get(
