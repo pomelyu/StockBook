@@ -70,7 +70,7 @@ export function usePortfolio(): {
   const marketUpdateTimes = getMarketUpdateTimes(
     Object.entries(pricesQuery.data ?? {}).map(([ticker, stock]) => ({
       price_updated_at: stock.price_updated_at ?? null,
-      isTW: ticker.endsWith('.TW'),
+      isTW: ticker.endsWith('.TW') || ticker.endsWith('.TWO'),
     }))
   )
 

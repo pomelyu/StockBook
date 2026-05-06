@@ -100,8 +100,8 @@ export default function StockDetailPage() {
     )
   }
 
-  const isTW = ticker?.endsWith('.TW') ?? false
-  const displayTicker = isTW ? ticker!.replace('.TW', '') : ticker!
+  const isTW = (ticker?.endsWith('.TW') || ticker?.endsWith('.TWO')) ?? false
+  const displayTicker = isTW ? ticker!.replace(/\.TWO?$/, '') : ticker!
   const totalCost = position.sharesHeld * position.avgCostPerShare
   const totalReceived = position.realizedGains + position.cashDividends
 

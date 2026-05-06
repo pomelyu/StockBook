@@ -139,8 +139,8 @@ export default function HoldingsPage() {
   }
 
   const heldPositions = data?.positions.filter(p => p.sharesHeld > 1e-9) ?? []
-  const twPositions = heldPositions.filter(p => p.ticker.endsWith('.TW'))
-  const usPositions = heldPositions.filter(p => !p.ticker.endsWith('.TW'))
+  const twPositions = heldPositions.filter(p => p.ticker.endsWith('.TW') || p.ticker.endsWith('.TWO'))
+  const usPositions = heldPositions.filter(p => !p.ticker.endsWith('.TW') && !p.ticker.endsWith('.TWO'))
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-6 pb-24 lg:pb-6">

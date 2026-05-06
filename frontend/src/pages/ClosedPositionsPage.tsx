@@ -33,7 +33,7 @@ function ClosedRow({
   onSelect: () => void
 }) {
   const totalPnl = realizedGains + cashDividends
-  const displayTicker = isTW ? ticker.replace('.TW', '') : ticker
+  const displayTicker = isTW ? ticker.replace(/\.TWO?$/, '') : ticker
 
   return (
     <>
@@ -135,8 +135,8 @@ export default function ClosedPositionsPage() {
   const { data, isLoading, isError } = usePortfolio()
 
   const closedPositions = data?.positions.filter(p => p.sharesHeld <= 1e-9) ?? []
-  const twRows = closedPositions.filter(p => p.ticker.endsWith('.TW'))
-  const usRows = closedPositions.filter(p => !p.ticker.endsWith('.TW'))
+  const twRows = closedPositions.filter(p => p.ticker.endsWith('.TW') || p.ticker.endsWith('.TWO'))
+  const usRows = closedPositions.filter(p => !p.ticker.endsWith('.TW') && !p.ticker.endsWith('.TWO'))
 
   const totalRealizedGains = closedPositions.reduce((s, p) => s + p.realizedGains, 0)
   const totalCashDividends = closedPositions.reduce((s, p) => s + p.cashDividends, 0)
