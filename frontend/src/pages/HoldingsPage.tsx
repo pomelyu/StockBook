@@ -134,6 +134,17 @@ function PositionRow({ pos, isTW, onSelect, exchangeRate }: { pos: Position; isT
 
 function PositionTable({ title, positions, onSelect, exchangeRate }: { title: string; positions: Position[]; onSelect: (ticker: string) => void; exchangeRate?: number | null }) {
   const isTW = title === 'TW'
+  const fx = (!isTW && exchangeRate != null) ? exchangeRate : null
+  const toTwd = (v: number) => fx !== null ? fmtNumber(v * fx, 0) : null
+
+  const subtotalValue = positions.every(p => p.positionValue !== null)
+    ? positions.reduce((s, p) => s + (p.positionValue ?? 0), 0)
+    : null
+  const subtotalUnrealized = positions.every(p => p.unrealizedPnl !== null)
+    ? positions.reduce((s, p) => s + (p.unrealizedPnl ?? 0), 0)
+    : null
+  const subtotalRealized = positions.reduce((s, p) => s + p.realizedGains, 0)
+
   return (
     <div className="mb-6">
       <div className="mb-2 flex items-baseline gap-2">
@@ -161,6 +172,32 @@ function PositionTable({ title, positions, onSelect, exchangeRate }: { title: st
               <PositionRow key={pos.ticker} pos={pos} isTW={isTW} onSelect={onSelect} exchangeRate={exchangeRate} />
             ))}
           </tbody>
+          <tfoot>
+            <tr className="border-t-2 border-gray-200 bg-gray-50 text-sm font-semibold">
+              <td className="px-4 py-3 text-gray-700">小計</td>
+              <td /><td /><td />
+              <td className="px-4 py-3 text-right text-gray-700">
+                {subtotalValue !== null ? (
+                  <>
+                    <div>{fmtNumber(subtotalValue)}</div>
+                    {toTwd(subtotalValue) && <div className="text-xs text-gray-400 font-normal">{toTwd(subtotalValue)}</div>}
+                  </>
+                ) : '—'}
+              </td>
+              <td className="px-4 py-3 text-right">
+                <PnlBadge value={subtotalUnrealized} />
+                {subtotalUnrealized !== null && toTwd(subtotalUnrealized) && (
+                  <div className="text-xs text-gray-400 font-normal">{toTwd(subtotalUnrealized)}</div>
+                )}
+              </td>
+              <td className="px-4 py-3 text-right">
+                <PnlBadge value={subtotalRealized} />
+                {subtotalRealized !== null && toTwd(subtotalRealized) && (
+                  <div className="text-xs text-gray-400 font-normal">{toTwd(subtotalRealized)}</div>
+                )}
+              </td>
+            </tr>
+          </tfoot>
         </table>
       </div>
       {/* Mobile card list */}
@@ -168,6 +205,33 @@ function PositionTable({ title, positions, onSelect, exchangeRate }: { title: st
         {positions.map((pos) => (
           <PositionRow key={pos.ticker} pos={pos} isTW={isTW} onSelect={onSelect} exchangeRate={exchangeRate} />
         ))}
+        {/* Mobile subtotal card */}
+        <div className="border border-gray-200 rounded-xl p-4 bg-gray-50">
+          <div className="text-xs font-semibold text-gray-500 mb-2">小計</div>
+          <div className="grid grid-cols-3 gap-2 text-xs text-gray-600">
+            <div>
+              <div className="text-gray-400">總值</div>
+              <div className="font-medium">{subtotalValue !== null ? fmtNumber(subtotalValue) : '—'}</div>
+              {subtotalValue !== null && toTwd(subtotalValue) && (
+                <div className="text-gray-400">{toTwd(subtotalValue)}</div>
+              )}
+            </div>
+            <div>
+              <div className="text-gray-400">未實現損益</div>
+              <PnlBadge value={subtotalUnrealized} />
+              {subtotalUnrealized !== null && toTwd(subtotalUnrealized) && (
+                <div className="text-gray-400">{toTwd(subtotalUnrealized)}</div>
+              )}
+            </div>
+            <div>
+              <div className="text-gray-400">已實現損益</div>
+              <PnlBadge value={subtotalRealized} />
+              {subtotalRealized !== 0 && toTwd(subtotalRealized) && (
+                <div className="text-gray-400">{toTwd(subtotalRealized)}</div>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   )
