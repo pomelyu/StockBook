@@ -28,8 +28,11 @@ function PnlBadge({ value, pct }: { value: number | null; pct?: number | null })
   )
 }
 
-function PositionRow({ pos, isTW, onSelect }: { pos: Position; isTW: boolean; onSelect: (ticker: string) => void }) {
+function PositionRow({ pos, isTW, onSelect, exchangeRate }: { pos: Position; isTW: boolean; onSelect: (ticker: string) => void; exchangeRate?: number | null }) {
   const shareDecimals = isTW ? 0 : 3
+  const fx = (!isTW && exchangeRate != null) ? exchangeRate : null
+  const toTwd = (v: number) => fx !== null ? fmtNumber(v * fx, 0) : null
+
   return (
     <>
       {/* Desktop row */}
@@ -42,18 +45,37 @@ function PositionRow({ pos, isTW, onSelect }: { pos: Position; isTW: boolean; on
           {pos.stockName && <div className="text-xs text-gray-500 truncate max-w-[160px]">{pos.stockName}</div>}
         </td>
         <td className="px-4 py-3 text-right text-sm text-gray-700">{fmtNumber(pos.sharesHeld, shareDecimals)}</td>
-        <td className="px-4 py-3 text-right text-sm text-gray-700">{fmtNumber(pos.avgCostPerShare)}</td>
         <td className="px-4 py-3 text-right text-sm text-gray-700">
-          {pos.currentPrice !== null ? fmtNumber(pos.currentPrice) : '—'}
+          <div>{fmtNumber(pos.avgCostPerShare)}</div>
+          {toTwd(pos.avgCostPerShare) && <div className="text-xs text-gray-400">{toTwd(pos.avgCostPerShare)}</div>}
         </td>
         <td className="px-4 py-3 text-right text-sm text-gray-700">
-          {pos.positionValue !== null ? fmtNumber(pos.positionValue) : '—'}
+          {pos.currentPrice !== null ? (
+            <>
+              <div>{fmtNumber(pos.currentPrice)}</div>
+              {toTwd(pos.currentPrice) && <div className="text-xs text-gray-400">{toTwd(pos.currentPrice)}</div>}
+            </>
+          ) : '—'}
+        </td>
+        <td className="px-4 py-3 text-right text-sm text-gray-700">
+          {pos.positionValue !== null ? (
+            <>
+              <div>{fmtNumber(pos.positionValue)}</div>
+              {toTwd(pos.positionValue) && <div className="text-xs text-gray-400">{toTwd(pos.positionValue)}</div>}
+            </>
+          ) : '—'}
         </td>
         <td className="px-4 py-3 text-right">
           <PnlBadge value={pos.unrealizedPnl} pct={pos.unrealizedPnlPct} />
+          {pos.unrealizedPnl !== null && toTwd(pos.unrealizedPnl) && (
+            <div className="text-xs text-gray-400">{toTwd(pos.unrealizedPnl)}</div>
+          )}
         </td>
         <td className="px-4 py-3 text-right">
           <PnlBadge value={pos.realizedGains} />
+          {pos.realizedGains !== 0 && toTwd(pos.realizedGains) && (
+            <div className="text-xs text-gray-400">{toTwd(pos.realizedGains)}</div>
+          )}
         </td>
       </tr>
 
@@ -70,6 +92,9 @@ function PositionRow({ pos, isTW, onSelect }: { pos: Position; isTW: boolean; on
           <div className="text-right">
             <div className="text-xs text-gray-500">未實現損益</div>
             <PnlBadge value={pos.unrealizedPnl} pct={pos.unrealizedPnlPct} />
+            {pos.unrealizedPnl !== null && toTwd(pos.unrealizedPnl) && (
+              <div className="text-xs text-gray-400">{toTwd(pos.unrealizedPnl)}</div>
+            )}
           </div>
         </div>
         <div className="grid grid-cols-3 gap-2 text-xs text-gray-600 pt-1 border-t border-gray-100">
@@ -80,18 +105,26 @@ function PositionRow({ pos, isTW, onSelect }: { pos: Position; isTW: boolean; on
           <div>
             <div className="text-gray-400">均攤成本</div>
             <div>{fmtNumber(pos.avgCostPerShare)}</div>
+            {toTwd(pos.avgCostPerShare) && <div className="text-gray-400">{toTwd(pos.avgCostPerShare)}</div>}
           </div>
           <div>
             <div className="text-gray-400">現價 / 總值</div>
             <div>{pos.currentPrice !== null ? fmtNumber(pos.currentPrice) : '—'}</div>
+            {pos.currentPrice !== null && toTwd(pos.currentPrice) && (
+              <div className="text-gray-400">{toTwd(pos.currentPrice)}</div>
+            )}
             {pos.positionValue !== null && (
               <div className="text-gray-400">{fmtNumber(pos.positionValue)}</div>
+            )}
+            {pos.positionValue !== null && toTwd(pos.positionValue) && (
+              <div className="text-gray-400">{toTwd(pos.positionValue)}</div>
             )}
           </div>
         </div>
         {pos.realizedGains !== 0 && (
           <div className="text-xs text-gray-500">
             已實現：<PnlBadge value={pos.realizedGains} />
+            {toTwd(pos.realizedGains) && <span className="text-gray-400 ml-1">{toTwd(pos.realizedGains)}</span>}
           </div>
         )}
       </div>
@@ -125,7 +158,7 @@ function PositionTable({ title, positions, onSelect, exchangeRate }: { title: st
           </thead>
           <tbody>
             {positions.map((pos) => (
-              <PositionRow key={pos.ticker} pos={pos} isTW={isTW} onSelect={onSelect} />
+              <PositionRow key={pos.ticker} pos={pos} isTW={isTW} onSelect={onSelect} exchangeRate={exchangeRate} />
             ))}
           </tbody>
         </table>
@@ -133,7 +166,7 @@ function PositionTable({ title, positions, onSelect, exchangeRate }: { title: st
       {/* Mobile card list */}
       <div className="sm:hidden space-y-3">
         {positions.map((pos) => (
-          <PositionRow key={pos.ticker} pos={pos} isTW={isTW} onSelect={onSelect} />
+          <PositionRow key={pos.ticker} pos={pos} isTW={isTW} onSelect={onSelect} exchangeRate={exchangeRate} />
         ))}
       </div>
     </div>
