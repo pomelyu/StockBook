@@ -46,6 +46,9 @@ function PositionRow({ pos, isTW, onSelect }: { pos: Position; isTW: boolean; on
         <td className="px-4 py-3 text-right text-sm text-gray-700">
           {pos.currentPrice !== null ? fmtNumber(pos.currentPrice) : '—'}
         </td>
+        <td className="px-4 py-3 text-right text-sm text-gray-700">
+          {pos.positionValue !== null ? fmtNumber(pos.positionValue) : '—'}
+        </td>
         <td className="px-4 py-3 text-right">
           <PnlBadge value={pos.unrealizedPnl} pct={pos.unrealizedPnlPct} />
         </td>
@@ -79,8 +82,11 @@ function PositionRow({ pos, isTW, onSelect }: { pos: Position; isTW: boolean; on
             <div>{fmtNumber(pos.avgCostPerShare)}</div>
           </div>
           <div>
-            <div className="text-gray-400">現價</div>
+            <div className="text-gray-400">現價 / 總值</div>
             <div>{pos.currentPrice !== null ? fmtNumber(pos.currentPrice) : '—'}</div>
+            {pos.positionValue !== null && (
+              <div className="text-gray-400">{fmtNumber(pos.positionValue)}</div>
+            )}
           </div>
         </div>
         {pos.realizedGains !== 0 && (
@@ -112,6 +118,7 @@ function PositionTable({ title, positions, onSelect, exchangeRate }: { title: st
               <th className="px-4 py-3 text-right">持股數</th>
               <th className="px-4 py-3 text-right">均攤成本</th>
               <th className="px-4 py-3 text-right">現價</th>
+              <th className="px-4 py-3 text-right">總值</th>
               <th className="px-4 py-3 text-right">未實現損益</th>
               <th className="px-4 py-3 text-right">已實現損益</th>
             </tr>

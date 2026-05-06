@@ -13,6 +13,8 @@ export interface Position {
   sharesHeld: number
   avgCostPerShare: number
   currentPrice: number | null
+  /** 目前總市值（= totalCost + unrealizedPnl），null 表示無股價 */
+  positionValue: number | null
   unrealizedPnl: number | null
   unrealizedPnlPct: number | null
   realizedGains: number
@@ -160,8 +162,10 @@ export function calculatePortfolio(
 
     let unrealizedPnl: number | null = null
     let unrealizedPnlPct: number | null = null
+    let positionValue: number | null = null
     if (currentPrice !== null && sharesHeld > 1e-9) {
-      unrealizedPnl = (currentPrice - avgCostPerShare) * sharesHeld
+      positionValue = currentPrice * sharesHeld
+      unrealizedPnl = positionValue - totalCost
       unrealizedPnlPct = avgCostPerShare > 0 ? (unrealizedPnl / (avgCostPerShare * sharesHeld)) * 100 : null
     }
 
@@ -172,6 +176,7 @@ export function calculatePortfolio(
       sharesHeld,
       avgCostPerShare,
       currentPrice,
+      positionValue,
       unrealizedPnl,
       unrealizedPnlPct,
       realizedGains: realizedGains[ticker] ?? 0,
