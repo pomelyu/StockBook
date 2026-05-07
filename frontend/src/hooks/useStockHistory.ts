@@ -37,13 +37,15 @@ export function useStockHistory(ticker: string) {
       const qty = parseFloat(tx.quantity)
       const prc = parseFloat(tx.price)
       const fee = parseFloat(tx.fee)
+      // BUY: amount = total cost including fee; SELL: amount = net proceeds after fee
+      const amount = tx.transaction_type === 'BUY' ? qty * prc + fee : qty * prc - fee
       entries.push({
         id: tx.id,
         kind: tx.transaction_type,
         date: tx.transaction_date,
         shares: qty,
         price: prc,
-        amount: qty * prc + fee,
+        amount,
         note: tx.note,
         raw: tx,
       })
