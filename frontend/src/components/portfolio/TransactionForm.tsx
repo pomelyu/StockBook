@@ -205,6 +205,24 @@ export default function TransactionForm({ onSuccess, onCancel, currentPosition, 
         />
       </div>
 
+      {/* Real-time amount preview */}
+      {quantity && price && (
+        () => {
+          const qty = parseFloat(quantity)
+          const prc = parseFloat(price)
+          const f = parseFloat(fee || '0')
+          const total = txType === 'BUY' ? qty * prc + f : qty * prc - f
+          return Number.isFinite(total) ? (
+            <div className="rounded-lg bg-gray-50 px-4 py-3 text-sm flex justify-between items-center">
+              <span className="text-gray-500">{txType === 'BUY' ? '預計支出' : '預計收入'}</span>
+              <span className={`font-semibold ${txType === 'BUY' ? 'text-red-600' : 'text-green-600'}`}>
+                {new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(total)}
+              </span>
+            </div>
+          ) : null
+        }
+      )()}
+
       {error && <p className="text-sm text-red-600">{error}</p>}
 
       <div className="flex gap-3 pt-2">
