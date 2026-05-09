@@ -31,22 +31,27 @@ async def _background_catalog_sync() -> None:
 
 
 async def _seed_admin_user() -> None:
-    """Create the hardcoded admin user if it doesn't already exist."""
+    """Create or update the hardcoded admin user from .env on every startup."""
     async with AsyncSessionLocal() as db:
         result = await db.execute(select(User).where(User.username == settings.SEED_USERNAME))
-        if result.scalar_one_or_none():
-            return
+        user = result.scalar_one_or_none()
 
-        user = User(
-            username=settings.SEED_USERNAME,
-            email=settings.SEED_EMAIL,
-            hashed_password=hash_password(settings.SEED_PASSWORD),
-            is_active=True,
-            is_superuser=True,
-        )
-        db.add(user)
-        await db.commit()
-        logger.info("Seed user '%s' created", settings.SEED_USERNAME)
+        if user is None:
+            user = User(
+                username=settings.SEED_USERNAME,
+                email=settings.SEED_EMAIL,
+                hashed_password=hash_password(settings.SEED_PASSWORD),
+                is_active=True,
+                is_superuser=True,
+            )
+            db.add(user)
+            await db.commit()
+            logger.info("Seed user '%s' created", settings.SEED_USERNAME)
+        else:
+            user.hashed_password = hash_password(settings.SEED_PASSWORD)
+            user.email = settings.SEED_EMAIL
+            await db.commit()
+            logger.info("Seed user '%s' password synced from env", settings.SEED_USERNAME)
 
 
 @asynccontextmanager
