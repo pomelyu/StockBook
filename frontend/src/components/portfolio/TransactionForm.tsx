@@ -56,6 +56,13 @@ export default function TransactionForm({ onSuccess, onCancel, currentPosition, 
   const market = inferMarket(activeTicker)
   const filteredAccounts = market ? accounts.filter(a => a.market === market) : accounts
 
+  // Auto-select first account when list becomes available and nothing is selected
+  useEffect(() => {
+    if (!accountId && filteredAccounts.length > 0) {
+      setAccountId(filteredAccounts[0].id)
+    }
+  }, [filteredAccounts.map(a => a.id).join(',')])
+
   const position = currentPosition ? currentPosition(ticker.toUpperCase()) : null
 
   const mutation = useMutation({
@@ -162,7 +169,6 @@ export default function TransactionForm({ onSuccess, onCancel, currentPosition, 
             onChange={(e) => setAccountId(e.target.value)}
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option value="" disabled>請選擇帳戶</option>
             {filteredAccounts.map((a) => (
               <option key={a.id} value={a.id}>{a.name}</option>
             ))}
