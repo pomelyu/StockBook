@@ -8,6 +8,8 @@ export interface Transaction {
   fee: string
   transaction_date: string  // YYYY-MM-DD
   note: string | null
+  account_id: string
+  account_name: string
   created_at: string
   updated_at: string
 }
@@ -20,6 +22,7 @@ export interface TransactionCreate {
   fee?: string
   transaction_date: string
   note?: string | null
+  account_id: string
 }
 
 export interface TransactionUpdate {
@@ -29,4 +32,5 @@ export interface TransactionUpdate {
   fee?: string
   transaction_date?: string
   note?: string | null
+  account_id?: string | null
 }

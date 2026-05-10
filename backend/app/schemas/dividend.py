@@ -26,6 +26,7 @@ class DividendCreate(BaseModel):
     ex_dividend_date: date = Field(..., description="除息日（格式：YYYY-MM-DD）")
     payment_date: date | None = Field(None, description="配息日（可選）")
     note: str | None = Field(None, description="備註（可選）")
+    account_id: uuid.UUID = Field(..., description="所屬帳戶 ID")
 
     @model_validator(mode="after")
     def validate_shares_received(self) -> "DividendCreate":
@@ -44,6 +45,7 @@ class DividendUpdate(BaseModel):
     ex_dividend_date: date | None = Field(None, description="除息日")
     payment_date: date | None = Field(None, description="配息日")
     note: str | None = Field(None, description="備註")
+    account_id: uuid.UUID | None = Field(None, description="所屬帳戶 ID")
 
 
 class DividendResponse(BaseModel):
@@ -57,6 +59,8 @@ class DividendResponse(BaseModel):
     ex_dividend_date: date = Field(..., description="除息日")
     payment_date: date | None = Field(None, description="配息日")
     note: str | None = Field(None, description="備註")
+    account_id: uuid.UUID = Field(..., description="所屬帳戶 ID")
+    account_name: str = Field(..., description="帳戶名稱")
     created_at: datetime = Field(..., description="建立時間")
 
     model_config = {"from_attributes": True}

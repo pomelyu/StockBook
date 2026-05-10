@@ -1,9 +1,13 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { usePortfolio } from '../hooks/usePortfolio'
+import { calculatePortfolio } from '../utils/pnl'
+import { listAccounts } from '../api/accounts'
 import AddRecordModal from '../components/portfolio/AddRecordModal'
 import MarketUpdateBadge from '../components/ui/MarketUpdateBadge'
 import type { Position } from '../utils/pnl'
+import type { Account } from '../types/account'
 
 function fmtNumber(n: number, decimals = 2): string {
   return new Intl.NumberFormat('en-US', {
@@ -146,7 +150,46 @@ function PositionRow({ pos, isTW, onSelect, exchangeRate }: { pos: Position; isT
   )
 }
 
-function PositionTable({ title, positions, onSelect, exchangeRate }: { title: string; positions: Position[]; onSelect: (ticker: string) => void; exchangeRate?: number | null }) {
+function AccountFilterTabs({ accounts, selected, onSelect }: {
+  accounts: Account[]
+  selected: string | null
+  onSelect: (id: string | null) => void
+}) {
+  if (accounts.length === 0) return null
+  return (
+    <div className="flex flex-wrap gap-1 mb-2">
+      <button
+        onClick={() => onSelect(null)}
+        className={`px-2 py-0.5 text-xs rounded-full border transition-colors ${
+          selected === null ? 'bg-gray-700 text-white border-gray-700' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+        }`}
+      >
+        全部
+      </button>
+      {accounts.map(a => (
+        <button
+          key={a.id}
+          onClick={() => onSelect(a.id)}
+          className={`px-2 py-0.5 text-xs rounded-full border transition-colors ${
+            selected === a.id ? 'bg-gray-700 text-white border-gray-700' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+          }`}
+        >
+          {a.name}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function PositionTable({ title, positions, onSelect, exchangeRate, accounts, selectedAccount, onSelectAccount }: {
+  title: string
+  positions: Position[]
+  onSelect: (ticker: string) => void
+  exchangeRate?: number | null
+  accounts: Account[]
+  selectedAccount: string | null
+  onSelectAccount: (id: string | null) => void
+}) {
   const isTW = title === 'TW'
   const fx = (!isTW && exchangeRate != null) ? exchangeRate : null
   const toTwd = (v: number) => fx !== null ? fmtNumber(v * fx, 0) : null
@@ -162,11 +205,14 @@ function PositionTable({ title, positions, onSelect, exchangeRate }: { title: st
 
   return (
     <div className="mb-6">
-      <div className="mb-2 flex items-baseline gap-2">
-        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">{title}</h2>
-        {exchangeRate != null && (
-          <span className="text-xs text-gray-400">USD/TWD {exchangeRate.toFixed(2)}</span>
-        )}
+      <div className="mb-2">
+        <div className="flex items-baseline gap-2 mb-1">
+          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">{title}</h2>
+          {exchangeRate != null && (
+            <span className="text-xs text-gray-400">USD/TWD {exchangeRate.toFixed(2)}</span>
+          )}
+        </div>
+        <AccountFilterTabs accounts={accounts} selected={selectedAccount} onSelect={onSelectAccount} />
       </div>
       {/* Desktop table */}
       <div className="hidden sm:block rounded-xl border border-gray-200 bg-white overflow-hidden">
@@ -266,17 +312,43 @@ function PositionTable({ title, positions, onSelect, exchangeRate }: { title: st
 
 export default function HoldingsPage() {
   const navigate = useNavigate()
-  const { data, isLoading, isError, marketUpdateTimes } = usePortfolio()
+  const { data, transactions, dividends, prices, usdToTwd, isLoading, isError, marketUpdateTimes } = usePortfolio()
   const [showModal, setShowModal] = useState(false)
+  const [selectedTWAccount, setSelectedTWAccount] = useState<string | null>(null)
+  const [selectedUSAccount, setSelectedUSAccount] = useState<string | null>(null)
+
+  const accountsQuery = useQuery({
+    queryKey: ['accounts'],
+    queryFn: listAccounts,
+    staleTime: 60_000,
+  })
+  const twAccounts = (accountsQuery.data ?? []).filter(a => a.market === 'TW')
+  const usAccounts = (accountsQuery.data ?? []).filter(a => a.market === 'US')
+
+  // Compute filtered portfolio for display (account filter only affects per-market positions)
+  const filteredPortfolio = (() => {
+    if (isLoading || isError || !data) return data
+    const filteredTW = selectedTWAccount
+      ? transactions.filter(tx => tx.account_id === selectedTWAccount)
+      : transactions.filter(tx => tx.ticker.endsWith('.TW') || tx.ticker.endsWith('.TWO'))
+    const filteredUS = selectedUSAccount
+      ? transactions.filter(tx => tx.account_id === selectedUSAccount)
+      : transactions.filter(tx => !tx.ticker.endsWith('.TW') && !tx.ticker.endsWith('.TWO'))
+    const combined = [...filteredTW, ...filteredUS]
+    return calculatePortfolio(combined, dividends, prices, usdToTwd)
+  })()
 
   function currentPosition(ticker: string): number {
     if (!data) return 0
     return data.positions.find(p => p.ticker === ticker)?.sharesHeld ?? 0
   }
 
-  const heldPositions = data?.positions.filter(p => p.sharesHeld > 1e-9) ?? []
+  const heldPositions = filteredPortfolio?.positions.filter(p => p.sharesHeld > 1e-9) ?? []
   const twPositions = heldPositions.filter(p => p.ticker.endsWith('.TW') || p.ticker.endsWith('.TWO'))
   const usPositions = heldPositions.filter(p => !p.ticker.endsWith('.TW') && !p.ticker.endsWith('.TWO'))
+
+  // Summary cards always use ALL data
+  const summaryData = data
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-6 pb-24 lg:pb-6">
@@ -286,36 +358,36 @@ export default function HoldingsPage() {
       </div>
 
       {/* Summary cards */}
-      {data && (
+      {summaryData && (
         <div className="mb-6 grid grid-cols-2 sm:grid-cols-3 gap-3">
           <div className="rounded-xl border border-gray-200 bg-white p-4">
             <div className="text-xs text-gray-500 mb-1">總成本</div>
-            <span className="text-sm font-medium text-gray-700">{fmtNumber(data.totalCost)}</span>
+            <span className="text-sm font-medium text-gray-700">{fmtNumber(summaryData.totalCost)}</span>
           </div>
           <div className="rounded-xl border border-gray-200 bg-white p-4">
             <div className="text-xs text-gray-500 mb-1">總市值</div>
             <span className="text-sm font-medium text-gray-700">
-              {data.totalValue !== null ? fmtNumber(data.totalValue) : '—'}
+              {summaryData.totalValue !== null ? fmtNumber(summaryData.totalValue) : '—'}
             </span>
           </div>
           <div className="col-span-2 sm:col-span-1 rounded-xl border border-gray-200 bg-white p-4">
             <div className="text-xs text-gray-500 mb-1">總損益</div>
             <PnlBadge
-              value={data.totalUnrealizedPnl + data.totalRealizedGains + data.totalCashDividends}
+              value={summaryData.totalUnrealizedPnl + summaryData.totalRealizedGains + summaryData.totalCashDividends}
             />
           </div>
           <div className="rounded-xl border border-gray-200 bg-white p-4">
             <div className="text-xs text-gray-500 mb-1">未實現損益</div>
-            <PnlBadge value={data.totalUnrealizedPnl} />
+            <PnlBadge value={summaryData.totalUnrealizedPnl} />
           </div>
           <div className="rounded-xl border border-gray-200 bg-white p-4">
             <div className="text-xs text-gray-500 mb-1">已實現損益</div>
-            <PnlBadge value={data.totalRealizedGains} />
+            <PnlBadge value={summaryData.totalRealizedGains} />
           </div>
           <div className="rounded-xl border border-gray-200 bg-white p-4">
             <div className="text-xs text-gray-500 mb-1">現金股息</div>
             <span className="text-sm font-medium text-gray-700">
-              {fmtNumber(data.totalCashDividends)}
+              {fmtNumber(summaryData.totalCashDividends)}
             </span>
           </div>
         </div>
@@ -341,8 +413,27 @@ export default function HoldingsPage() {
       {/* Position tables by market */}
       {!isLoading && !isError && (
         <>
-          {twPositions.length > 0 && <PositionTable title="TW" positions={twPositions} onSelect={(t) => navigate(`/holdings/${t}`)} />}
-          {usPositions.length > 0 && <PositionTable title="US" positions={usPositions} onSelect={(t) => navigate(`/holdings/${t}`)} exchangeRate={data?.usdToTwd} />}
+          {twPositions.length > 0 && (
+            <PositionTable
+              title="TW"
+              positions={twPositions}
+              onSelect={(t) => navigate(`/holdings/${t}`)}
+              accounts={twAccounts}
+              selectedAccount={selectedTWAccount}
+              onSelectAccount={setSelectedTWAccount}
+            />
+          )}
+          {usPositions.length > 0 && (
+            <PositionTable
+              title="US"
+              positions={usPositions}
+              onSelect={(t) => navigate(`/holdings/${t}`)}
+              exchangeRate={summaryData?.usdToTwd}
+              accounts={usAccounts}
+              selectedAccount={selectedUSAccount}
+              onSelectAccount={setSelectedUSAccount}
+            />
+          )}
         </>
       )}
 

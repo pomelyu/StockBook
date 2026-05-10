@@ -5,6 +5,7 @@ const BASE_TABS = [
   { label: 'Holdings', path: '/', icon: '📊' },
   { label: 'Closed', path: '/closed', icon: '✓' },
   { label: 'Watchlist', path: '/watchlist', icon: '★' },
+  { label: 'Accounts', path: '/accounts', icon: '🏦' },
 ]
 
 export default function BottomTabBar() {

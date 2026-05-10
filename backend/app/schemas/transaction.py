@@ -16,6 +16,7 @@ class TransactionCreate(BaseModel):
     fee: Decimal = Field(Decimal("0"), ge=0, description="手續費總額（影響 FIFO 成本計算，預設為 0）")
     transaction_date: date = Field(..., description="交割日（格式：YYYY-MM-DD）")
     note: str | None = Field(None, description="備註（可選）")
+    account_id: uuid.UUID = Field(..., description="所屬帳戶 ID")
 
 
 class TransactionUpdate(BaseModel):
@@ -25,6 +26,7 @@ class TransactionUpdate(BaseModel):
     fee: Decimal | None = Field(None, ge=0, description="手續費")
     transaction_date: date | None = Field(None, description="交割日")
     note: str | None = Field(None, description="備註")
+    account_id: uuid.UUID | None = Field(None, description="所屬帳戶 ID（不填則保持原帳戶）")
 
 
 class TransactionResponse(BaseModel):
@@ -37,6 +39,8 @@ class TransactionResponse(BaseModel):
     fee: Decimal = Field(..., description="手續費")
     transaction_date: date = Field(..., description="交割日")
     note: str | None = Field(None, description="備註")
+    account_id: uuid.UUID = Field(..., description="所屬帳戶 ID")
+    account_name: str = Field(..., description="帳戶名稱")
     created_at: datetime = Field(..., description="建立時間")
     updated_at: datetime = Field(..., description="最後更新時間")
 

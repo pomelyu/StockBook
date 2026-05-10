@@ -5,6 +5,7 @@ const BASE_NAV_ITEMS = [
   { label: 'Holdings', path: '/' },
   { label: 'Closed', path: '/closed' },
   { label: 'Watchlist', path: '/watchlist' },
+  { label: 'Accounts', path: '/accounts' },
 ]
 
 export default function Navbar() {

@@ -43,6 +43,11 @@ function HistoryRow({ entry, isTW, onClick }: { entry: HistoryEntry; isTW: boole
           <span className={`rounded px-1.5 py-0.5 text-xs font-medium shrink-0 ${KIND_COLOR[entry.kind]}`}>
             {KIND_LABEL[entry.kind]}
           </span>
+          {entry.accountName && (
+            <span className="rounded px-1.5 py-0.5 text-xs font-medium shrink-0 text-gray-500 bg-gray-100">
+              {entry.accountName}
+            </span>
+          )}
           {isBuySell && entry.shares !== null && (
             <span className="text-sm text-gray-700 truncate">
               {fmtNumber(entry.shares, shareDecimals)}股

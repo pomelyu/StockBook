@@ -14,6 +14,7 @@ from sqlalchemy.orm import selectinload
 
 from app.api.deps import get_current_user
 from app.database import get_db
+from app.models.account import Account
 from app.models.dividend import Dividend
 from app.models.stock import Stock
 from app.models.user import User
@@ -28,6 +29,7 @@ router = APIRouter(prefix="/dividends", tags=["dividends"])
 
 def _to_response(div: Dividend) -> DividendResponse:
     stock: Stock = div.stock
+    account: Account | None = div.account
     return DividendResponse(
         id=div.id,
         ticker=stock.ticker,
@@ -39,6 +41,8 @@ def _to_response(div: Dividend) -> DividendResponse:
         ex_dividend_date=div.ex_dividend_date,
         payment_date=div.payment_date,
         note=div.note,
+        account_id=div.account_id,
+        account_name=account.name if account else None,
         created_at=div.created_at,
     )
 
@@ -51,6 +55,7 @@ def _to_response(div: Dividend) -> DividendResponse:
 )
 async def list_dividends(
     ticker: str | None = Query(None, description="過濾指定股票代號（大小寫不敏感）"),
+    account_id: uuid.UUID | None = Query(None, description="過濾指定帳戶 ID"),
     page: int = Query(1, ge=1, description="頁碼（從 1 開始）"),
     page_size: int = Query(20, ge=1, le=100, description="每頁筆數（最大 100）"),
     include_all: bool = Query(False, description="若為 True，忽略分頁回傳所有紀錄（前端 P&L 計算用）"),
@@ -61,6 +66,7 @@ async def list_dividends(
     取得目前登入使用者的股息紀錄，支援分頁與過濾。
 
     - `ticker`：只回傳指定股票的股息紀錄
+    - `account_id`：只回傳指定帳戶的紀錄
     - `include_all=true`：忽略分頁，回傳全部紀錄（前端 FIFO 計算使用）
     - 結果依 `ex_dividend_date` 升序排列（FIFO 計算需要時序正確）
     - `dividend_type` 為 CASH（現金股息）、STOCK（配股）、DRIP（股息再投入）
@@ -68,11 +74,13 @@ async def list_dividends(
     base_q = (
         select(Dividend)
         .where(Dividend.user_id == current_user.id)
-        .options(selectinload(Dividend.stock))
+        .options(selectinload(Dividend.stock), selectinload(Dividend.account))
     )
 
     if ticker:
         base_q = base_q.join(Dividend.stock).where(Stock.ticker == ticker.upper())
+    if account_id is not None:
+        base_q = base_q.where(Dividend.account_id == account_id)
 
     total = await db.scalar(
         select(func.count()).select_from(base_q.subquery())
@@ -113,6 +121,13 @@ async def create_dividend(
     if not stock:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticker not found")
 
+    # Validate account belongs to current user
+    acct_result = await db.execute(
+        select(Account).where(Account.id == body.account_id, Account.user_id == current_user.id)
+    )
+    if acct_result.scalar_one_or_none() is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Account not found")
+
     div = Dividend(
         user_id=current_user.id,
         stock_id=stock.id,
@@ -123,10 +138,11 @@ async def create_dividend(
         ex_dividend_date=body.ex_dividend_date,
         payment_date=body.payment_date,
         note=body.note,
+        account_id=body.account_id,
     )
     db.add(div)
     await db.commit()
-    await db.refresh(div, ["stock"])
+    await db.refresh(div, ["stock", "account"])
     return _to_response(div)
 
 
@@ -149,7 +165,7 @@ async def get_dividend(
     result = await db.execute(
         select(Dividend)
         .where(Dividend.id == dividend_id, Dividend.user_id == current_user.id)
-        .options(selectinload(Dividend.stock))
+        .options(selectinload(Dividend.stock), selectinload(Dividend.account))
     )
     div = result.scalar_one_or_none()
     if not div:
@@ -177,7 +193,7 @@ async def update_dividend(
     result = await db.execute(
         select(Dividend)
         .where(Dividend.id == dividend_id, Dividend.user_id == current_user.id)
-        .options(selectinload(Dividend.stock))
+        .options(selectinload(Dividend.stock), selectinload(Dividend.account))
     )
     div = result.scalar_one_or_none()
     if not div:
@@ -197,9 +213,16 @@ async def update_dividend(
         div.payment_date = body.payment_date
     if body.note is not None:
         div.note = body.note
+    if body.account_id is not None:
+        acct_result = await db.execute(
+            select(Account).where(Account.id == body.account_id, Account.user_id == current_user.id)
+        )
+        if acct_result.scalar_one_or_none() is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Account not found")
+        div.account_id = body.account_id
 
     await db.commit()
-    await db.refresh(div, ["stock"])
+    await db.refresh(div, ["stock", "account"])
     return _to_response(div)
 
 

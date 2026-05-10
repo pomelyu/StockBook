@@ -4,6 +4,7 @@ import { createTransaction, updateTransaction } from '../../api/transactions'
 import { searchStocks } from '../../api/stocks'
 import type { Transaction, TransactionCreate, TransactionUpdate } from '../../types/transaction'
 import type { Stock } from '../../types/watchlist'
+import type { Account } from '../../types/account'
 
 interface Props {
   onSuccess: () => void
@@ -11,9 +12,16 @@ interface Props {
   currentPosition?: (ticker: string) => number
   initialData?: Transaction
   lockedTicker?: string
+  accounts?: Account[]
 }
 
-export default function TransactionForm({ onSuccess, onCancel, currentPosition, initialData, lockedTicker }: Props) {
+function inferMarket(ticker: string): 'TW' | 'US' | null {
+  if (ticker.endsWith('.TW') || ticker.endsWith('.TWO')) return 'TW'
+  if (ticker.length > 0 && !ticker.includes('.')) return null  // ambiguous until submitted
+  return 'US'
+}
+
+export default function TransactionForm({ onSuccess, onCancel, currentPosition, initialData, lockedTicker, accounts = [] }: Props) {
   const isEdit = !!initialData
   const tickerLocked = !!lockedTicker && !isEdit
   const queryClient = useQueryClient()
@@ -24,6 +32,7 @@ export default function TransactionForm({ onSuccess, onCancel, currentPosition, 
   const [fee, setFee] = useState(initialData?.fee ?? '0')
   const [date, setDate] = useState(initialData?.transaction_date ?? new Date().toISOString().slice(0, 10))
   const [note, setNote] = useState(initialData?.note ?? '')
+  const [accountId, setAccountId] = useState<string>(initialData?.account_id ?? '')
   const [error, setError] = useState<string | null>(null)
 
   // Stock search autocomplete (only for create mode)
@@ -41,6 +50,11 @@ export default function TransactionForm({ onSuccess, onCancel, currentPosition, 
       setShowSuggestions(results.length > 0)
     }, 300)
   }, [ticker, isEdit])
+
+  // Filter accounts by inferred market
+  const activeTicker = tickerLocked ? lockedTicker! : ticker
+  const market = inferMarket(activeTicker)
+  const filteredAccounts = market ? accounts.filter(a => a.market === market) : accounts
 
   const position = currentPosition ? currentPosition(ticker.toUpperCase()) : null
 
@@ -66,6 +80,10 @@ export default function TransactionForm({ onSuccess, onCancel, currentPosition, 
       setError('請填寫必填欄位')
       return
     }
+    if (!accountId) {
+      setError('請選擇帳戶')
+      return
+    }
     mutation.mutate({
       ticker,
       transaction_type: txType,
@@ -74,6 +92,7 @@ export default function TransactionForm({ onSuccess, onCancel, currentPosition, 
       fee: fee || '0',
       transaction_date: date,
       note: note || null,
+      account_id: accountId,
     })
   }
 
@@ -133,6 +152,23 @@ export default function TransactionForm({ onSuccess, onCancel, currentPosition, 
           <p className="mt-1 text-xs text-gray-500">目前持倉：{position} 股</p>
         )}
       </div>
+
+      {/* Account selector */}
+      {filteredAccounts.length > 0 && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">帳戶</label>
+          <select
+            value={accountId}
+            onChange={(e) => setAccountId(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="" disabled>請選擇帳戶</option>
+            {filteredAccounts.map((a) => (
+              <option key={a.id} value={a.id}>{a.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {/* Quantity & Price */}
       <div className="grid grid-cols-2 gap-3">

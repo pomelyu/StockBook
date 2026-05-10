@@ -1,5 +1,10 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { usePortfolio } from '../hooks/usePortfolio'
+import { calculatePortfolio } from '../utils/pnl'
+import { listAccounts } from '../api/accounts'
+import type { Account } from '../types/account'
 
 function fmtNumber(n: number, decimals = 2): string {
   return new Intl.NumberFormat('en-US', {
@@ -89,19 +94,59 @@ function ClosedRow({
   )
 }
 
+function AccountFilterTabs({ accounts, selected, onSelect }: {
+  accounts: Account[]
+  selected: string | null
+  onSelect: (id: string | null) => void
+}) {
+  if (accounts.length === 0) return null
+  return (
+    <div className="flex flex-wrap gap-1 mb-2">
+      <button
+        onClick={() => onSelect(null)}
+        className={`px-2 py-0.5 text-xs rounded-full border transition-colors ${
+          selected === null ? 'bg-gray-700 text-white border-gray-700' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+        }`}
+      >
+        全部
+      </button>
+      {accounts.map(a => (
+        <button
+          key={a.id}
+          onClick={() => onSelect(a.id)}
+          className={`px-2 py-0.5 text-xs rounded-full border transition-colors ${
+            selected === a.id ? 'bg-gray-700 text-white border-gray-700' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+          }`}
+        >
+          {a.name}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 function MarketSection({
   title,
   rows,
   onSelect,
+  accounts,
+  selectedAccount,
+  onSelectAccount,
 }: {
   title: string
   rows: Array<{ ticker: string; stockName: string | null; realizedGains: number; cashDividends: number }>
   onSelect: (ticker: string) => void
+  accounts: Account[]
+  selectedAccount: string | null
+  onSelectAccount: (id: string | null) => void
 }) {
   const isTW = title === 'TW'
   return (
     <div className="mb-6">
-      <h2 className="mb-2 text-sm font-semibold text-gray-500 uppercase tracking-wide">{title}</h2>
+      <div className="mb-2">
+        <h2 className="mb-1 text-sm font-semibold text-gray-500 uppercase tracking-wide">{title}</h2>
+        <AccountFilterTabs accounts={accounts} selected={selectedAccount} onSelect={onSelectAccount} />
+      </div>
       {/* Desktop table */}
       <div className="hidden sm:block rounded-xl border border-gray-200 bg-white overflow-hidden">
         <table className="w-full text-sm">
@@ -132,9 +177,30 @@ function MarketSection({
 
 export default function ClosedPositionsPage() {
   const navigate = useNavigate()
-  const { data, isLoading, isError } = usePortfolio()
+  const { data, transactions, dividends, prices, usdToTwd, isLoading, isError } = usePortfolio()
+  const [selectedTWAccount, setSelectedTWAccount] = useState<string | null>(null)
+  const [selectedUSAccount, setSelectedUSAccount] = useState<string | null>(null)
 
-  const closedPositions = data?.positions.filter(p => p.sharesHeld <= 1e-9) ?? []
+  const accountsQuery = useQuery({
+    queryKey: ['accounts'],
+    queryFn: listAccounts,
+    staleTime: 60_000,
+  })
+  const twAccounts = (accountsQuery.data ?? []).filter(a => a.market === 'TW')
+  const usAccounts = (accountsQuery.data ?? []).filter(a => a.market === 'US')
+
+  const filteredPortfolio = (() => {
+    if (isLoading || isError || !data) return data
+    const filteredTW = selectedTWAccount
+      ? transactions.filter(tx => tx.account_id === selectedTWAccount)
+      : transactions.filter(tx => tx.ticker.endsWith('.TW') || tx.ticker.endsWith('.TWO'))
+    const filteredUS = selectedUSAccount
+      ? transactions.filter(tx => tx.account_id === selectedUSAccount)
+      : transactions.filter(tx => !tx.ticker.endsWith('.TW') && !tx.ticker.endsWith('.TWO'))
+    return calculatePortfolio([...filteredTW, ...filteredUS], dividends, prices, usdToTwd)
+  })()
+
+  const closedPositions = filteredPortfolio?.positions.filter(p => p.sharesHeld <= 1e-9) ?? []
   const twRows = closedPositions.filter(p => p.ticker.endsWith('.TW') || p.ticker.endsWith('.TWO'))
   const usRows = closedPositions.filter(p => !p.ticker.endsWith('.TW') && !p.ticker.endsWith('.TWO'))
 
@@ -184,6 +250,9 @@ export default function ClosedPositionsPage() {
               title="TW"
               rows={twRows}
               onSelect={(t) => navigate(`/holdings/${t}`)}
+              accounts={twAccounts}
+              selectedAccount={selectedTWAccount}
+              onSelectAccount={setSelectedTWAccount}
             />
           )}
           {usRows.length > 0 && (
@@ -191,6 +260,9 @@ export default function ClosedPositionsPage() {
               title="US"
               rows={usRows}
               onSelect={(t) => navigate(`/holdings/${t}`)}
+              accounts={usAccounts}
+              selectedAccount={selectedUSAccount}
+              onSelectAccount={setSelectedUSAccount}
             />
           )}
         </>

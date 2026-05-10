@@ -1,6 +1,8 @@
 import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import TransactionForm from './TransactionForm'
 import DividendForm from './DividendForm'
+import { listAccounts } from '../../api/accounts'
 
 type Step = 'choose' | 'transaction' | 'dividend'
 
@@ -12,6 +14,13 @@ interface Props {
 
 export default function AddRecordModal({ onClose, currentPosition, lockedTicker }: Props) {
   const [step, setStep] = useState<Step>('choose')
+
+  const accountsQuery = useQuery({
+    queryKey: ['accounts'],
+    queryFn: listAccounts,
+    staleTime: 60_000,
+  })
+  const accounts = accountsQuery.data ?? []
 
   function handleSuccess() {
     onClose()
@@ -73,6 +82,7 @@ export default function AddRecordModal({ onClose, currentPosition, lockedTicker 
             onCancel={() => setStep('choose')}
             currentPosition={currentPosition}
             lockedTicker={lockedTicker}
+            accounts={accounts}
           />
         )}
 
@@ -81,6 +91,7 @@ export default function AddRecordModal({ onClose, currentPosition, lockedTicker 
             onSuccess={handleSuccess}
             onCancel={() => setStep('choose')}
             lockedTicker={lockedTicker}
+            accounts={accounts}
           />
         )}
       </div>

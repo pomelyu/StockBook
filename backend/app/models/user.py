@@ -37,3 +37,6 @@ class User(Base):
     dividends: Mapped[list["Dividend"]] = relationship(  # noqa: F821
         "Dividend", back_populates="user", cascade="all, delete-orphan"
     )
+    accounts: Mapped[list["Account"]] = relationship(  # noqa: F821
+        "Account", back_populates="user", cascade="all, delete-orphan"
+    )

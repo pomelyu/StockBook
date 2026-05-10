@@ -14,6 +14,7 @@ from sqlalchemy.orm import selectinload
 
 from app.api.deps import get_current_user
 from app.database import get_db
+from app.models.account import Account
 from app.models.stock import Stock
 from app.models.transaction import Transaction
 from app.models.user import User
@@ -29,6 +30,7 @@ router = APIRouter(prefix="/transactions", tags=["transactions"])
 
 def _to_response(tx: Transaction) -> TransactionResponse:
     stock: Stock = tx.stock
+    account: Account | None = tx.account
     return TransactionResponse(
         id=tx.id,
         ticker=stock.ticker,
@@ -39,6 +41,8 @@ def _to_response(tx: Transaction) -> TransactionResponse:
         fee=tx.fee,
         transaction_date=tx.transaction_date,
         note=tx.note,
+        account_id=tx.account_id,
+        account_name=account.name if account else None,
         created_at=tx.created_at,
         updated_at=tx.updated_at,
     )
@@ -53,6 +57,7 @@ def _to_response(tx: Transaction) -> TransactionResponse:
 async def list_transactions(
     ticker: str | None = Query(None, description="過濾指定股票代號（大小寫不敏感）"),
     transaction_type: str | None = Query(None, description="過濾交易類型：BUY 或 SELL"),
+    account_id: uuid.UUID | None = Query(None, description="過濾指定帳戶 ID"),
     page: int = Query(1, ge=1, description="頁碼（從 1 開始）"),
     page_size: int = Query(20, ge=1, le=100, description="每頁筆數（最大 100）"),
     include_all: bool = Query(False, description="若為 True，忽略分頁回傳所有紀錄（前端 P&L 計算用）"),
@@ -64,19 +69,22 @@ async def list_transactions(
 
     - `ticker`：只回傳指定股票的紀錄（例：`2330.TW` 或 `AAPL`）
     - `transaction_type`：只回傳 BUY 或 SELL
+    - `account_id`：只回傳指定帳戶的紀錄
     - `include_all=true`：忽略分頁，回傳全部紀錄（前端 FIFO 計算使用）
     - 結果依 `transaction_date` 升序排列（FIFO 計算需要時序正確）
     """
     base_q = (
         select(Transaction)
         .where(Transaction.user_id == current_user.id)
-        .options(selectinload(Transaction.stock))
+        .options(selectinload(Transaction.stock), selectinload(Transaction.account))
     )
 
     if ticker:
         base_q = base_q.join(Transaction.stock).where(Stock.ticker == ticker.upper())
     if transaction_type:
         base_q = base_q.where(Transaction.transaction_type == transaction_type.upper())
+    if account_id is not None:
+        base_q = base_q.where(Transaction.account_id == account_id)
 
     total = await db.scalar(
         select(func.count()).select_from(base_q.subquery())
@@ -124,6 +132,13 @@ async def create_transaction(
     if not stock.track_price:
         stock.track_price = True
 
+    # Validate account belongs to current user
+    acct_result = await db.execute(
+        select(Account).where(Account.id == body.account_id, Account.user_id == current_user.id)
+    )
+    if acct_result.scalar_one_or_none() is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Account not found")
+
     tx = Transaction(
         user_id=current_user.id,
         stock_id=stock.id,
@@ -133,10 +148,11 @@ async def create_transaction(
         fee=body.fee,
         transaction_date=body.transaction_date,
         note=body.note,
+        account_id=body.account_id,
     )
     db.add(tx)
     await db.commit()
-    await db.refresh(tx, ["stock"])
+    await db.refresh(tx, ["stock", "account"])
     return _to_response(tx)
 
 
@@ -159,7 +175,7 @@ async def get_transaction(
     result = await db.execute(
         select(Transaction)
         .where(Transaction.id == transaction_id, Transaction.user_id == current_user.id)
-        .options(selectinload(Transaction.stock))
+        .options(selectinload(Transaction.stock), selectinload(Transaction.account))
     )
     tx = result.scalar_one_or_none()
     if not tx:
@@ -188,7 +204,7 @@ async def update_transaction(
     result = await db.execute(
         select(Transaction)
         .where(Transaction.id == transaction_id, Transaction.user_id == current_user.id)
-        .options(selectinload(Transaction.stock))
+        .options(selectinload(Transaction.stock), selectinload(Transaction.account))
     )
     tx = result.scalar_one_or_none()
     if not tx:
@@ -207,6 +223,13 @@ async def update_transaction(
         tx.transaction_date = body.transaction_date
     if body.note is not None:
         tx.note = body.note
+    if body.account_id is not None:
+        acct_result = await db.execute(
+            select(Account).where(Account.id == body.account_id, Account.user_id == current_user.id)
+        )
+        if acct_result.scalar_one_or_none() is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Account not found")
+        tx.account_id = body.account_id
 
     # Re-validate if the result is a SELL
     if tx.transaction_type == "SELL":
@@ -222,7 +245,7 @@ async def update_transaction(
     result = await db.execute(
         select(Transaction)
         .where(Transaction.id == transaction_id)
-        .options(selectinload(Transaction.stock))
+        .options(selectinload(Transaction.stock), selectinload(Transaction.account))
     )
     tx = result.scalar_one()
     return _to_response(tx)

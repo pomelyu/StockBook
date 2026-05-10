@@ -4,12 +4,14 @@ import { createDividend, updateDividend } from '../../api/dividends'
 import { searchStocks } from '../../api/stocks'
 import type { Dividend, DividendCreate, DividendUpdate, DividendType } from '../../types/dividend'
 import type { Stock } from '../../types/watchlist'
+import type { Account } from '../../types/account'
 
 interface Props {
   onSuccess: () => void
   onCancel: () => void
   initialData?: Dividend
   lockedTicker?: string
+  accounts?: Account[]
 }
 
 const TYPE_LABELS: Record<DividendType, string> = {
@@ -18,7 +20,13 @@ const TYPE_LABELS: Record<DividendType, string> = {
   DRIP: '股息再投入',
 }
 
-export default function DividendForm({ onSuccess, onCancel, initialData, lockedTicker }: Props) {
+function inferMarket(ticker: string): 'TW' | 'US' | null {
+  if (ticker.endsWith('.TW') || ticker.endsWith('.TWO')) return 'TW'
+  if (ticker.length > 0 && !ticker.includes('.')) return null
+  return 'US'
+}
+
+export default function DividendForm({ onSuccess, onCancel, initialData, lockedTicker, accounts = [] }: Props) {
   const isEdit = !!initialData
   const tickerLocked = !!lockedTicker && !isEdit
   const queryClient = useQueryClient()
@@ -29,6 +37,7 @@ export default function DividendForm({ onSuccess, onCancel, initialData, lockedT
   const [sharesReceived, setSharesReceived] = useState(initialData?.shares_received ?? '')
   const [exDate, setExDate] = useState(initialData?.ex_dividend_date ?? new Date().toISOString().slice(0, 10))
   const [note, setNote] = useState(initialData?.note ?? '')
+  const [accountId, setAccountId] = useState<string>(initialData?.account_id ?? '')
   const [error, setError] = useState<string | null>(null)
 
   // Stock search autocomplete (only for create mode)
@@ -46,6 +55,10 @@ export default function DividendForm({ onSuccess, onCancel, initialData, lockedT
       setShowSuggestions(results.length > 0)
     }, 300)
   }, [ticker, isEdit])
+
+  const activeTicker = tickerLocked ? lockedTicker! : ticker
+  const market = inferMarket(activeTicker)
+  const filteredAccounts = market ? accounts.filter(a => a.market === market) : accounts
 
   const mutation = useMutation({
     mutationFn: (data: DividendCreate | DividendUpdate) =>
@@ -72,6 +85,10 @@ export default function DividendForm({ onSuccess, onCancel, initialData, lockedT
       return
     }
 
+    if (!accountId) {
+      setError('請選擇帳戶')
+      return
+    }
     mutation.mutate({
       ticker,
       dividend_type: divType,
@@ -80,6 +97,7 @@ export default function DividendForm({ onSuccess, onCancel, initialData, lockedT
       shares_received: divType !== 'CASH' ? sharesReceived : null,
       ex_dividend_date: exDate,
       note: note || null,
+      account_id: accountId,
     })
   }
 
@@ -136,6 +154,23 @@ export default function DividendForm({ onSuccess, onCancel, initialData, lockedT
           </ul>
         )}
       </div>
+
+      {/* Account selector */}
+      {filteredAccounts.length > 0 && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">帳戶</label>
+          <select
+            value={accountId}
+            onChange={(e) => setAccountId(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="" disabled>請選擇帳戶</option>
+            {filteredAccounts.map((a) => (
+              <option key={a.id} value={a.id}>{a.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {/* Amount & Currency (not for STOCK) */}
       {divType !== 'STOCK' && (

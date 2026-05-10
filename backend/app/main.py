@@ -95,6 +95,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from app.api.accounts import router as accounts_router  # noqa: E402
 from app.api.admin import router as admin_router  # noqa: E402
 # Register routers
 from app.api.auth import router as auth_router  # noqa: E402
@@ -109,6 +110,7 @@ app.include_router(stocks_router, prefix=PREFIX)
 app.include_router(watchlist_router, prefix=PREFIX)
 app.include_router(transactions_router, prefix=PREFIX)
 app.include_router(dividends_router, prefix=PREFIX)
+app.include_router(accounts_router, prefix=PREFIX)
 app.include_router(admin_router, prefix=PREFIX)
 
 

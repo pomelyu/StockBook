@@ -10,6 +10,7 @@ import HoldingsPage from './pages/HoldingsPage'
 import AdminPage from './pages/AdminPage'
 import StockDetailPage from './pages/StockDetailPage'
 import ClosedPositionsPage from './pages/ClosedPositionsPage'
+import AccountsPage from './pages/AccountsPage'
 
 const queryClient = new QueryClient()
 
@@ -25,6 +26,7 @@ function AppLayout() {
           <Route path="/holdings/:ticker" element={<StockDetailPage />} />
           <Route path="/closed" element={<ClosedPositionsPage />} />
           <Route path="/watchlist" element={<WatchlistPage />} />
+          <Route path="/accounts" element={<AccountsPage />} />
           {user.is_superuser && (
             <Route path="/admin" element={<AdminPage />} />
           )}

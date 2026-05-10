@@ -14,6 +14,7 @@ export interface HistoryEntry {
   price: number | null       // per-share price (tx only)
   amount: number             // qty*price+fee (tx) or dividend amount
   note: string | null
+  accountName: string | null
   raw: Transaction | Dividend
 }
 
@@ -47,6 +48,7 @@ export function useStockHistory(ticker: string) {
         price: prc,
         amount,
         note: tx.note,
+        accountName: tx.account_name ?? null,
         raw: tx,
       })
     }
@@ -62,6 +64,7 @@ export function useStockHistory(ticker: string) {
         price: null,
         amount: parseFloat(div.amount),
         note: div.note,
+        accountName: div.account_name ?? null,
         raw: div,
       })
     }

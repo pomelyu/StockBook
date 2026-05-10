@@ -36,5 +36,10 @@ class Transaction(Base):
         DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
     )
 
+    account_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("accounts.id", ondelete="RESTRICT"), nullable=False
+    )
+
     user: Mapped["User"] = relationship("User", back_populates="transactions")  # noqa: F821
     stock: Mapped["Stock"] = relationship("Stock", back_populates="transactions")  # noqa: F821
+    account: Mapped["Account"] = relationship("Account", back_populates="transactions")  # noqa: F821

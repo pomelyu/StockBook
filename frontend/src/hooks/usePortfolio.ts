@@ -4,10 +4,16 @@ import { listAllDividends } from '../api/dividends'
 import { batchGetPrices, getExchangeRate } from '../api/stocks'
 import { calculatePortfolio } from '../utils/pnl'
 import type { PortfolioSummary } from '../utils/pnl'
+import type { Transaction } from '../types/transaction'
+import type { Dividend } from '../types/dividend'
 import { getMarketUpdateTimes } from '../utils/marketTime'
 
 export function usePortfolio(): {
   data: PortfolioSummary | undefined
+  transactions: Transaction[]
+  dividends: Dividend[]
+  prices: Record<string, { last_price: number | null; currency: string; name?: string | null }>
+  usdToTwd: number | null
   isLoading: boolean
   isError: boolean
   refetch: () => void
@@ -81,5 +87,5 @@ export function usePortfolio(): {
     queryClient.invalidateQueries({ queryKey: ['exchange-rate'] })
   }
 
-  return { data, isLoading, isError, refetch, marketUpdateTimes }
+  return { data, transactions, dividends, prices, usdToTwd, isLoading, isError, refetch, marketUpdateTimes }
 }
