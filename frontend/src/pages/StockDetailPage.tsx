@@ -40,14 +40,14 @@ function HistoryRow({ entry, isTW, onClick }: { entry: HistoryEntry; isTW: boole
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-xs text-gray-400 shrink-0">{entry.date}</span>
-          <span className={`rounded px-1.5 py-0.5 text-xs font-medium shrink-0 ${KIND_COLOR[entry.kind]}`}>
-            {KIND_LABEL[entry.kind]}
-          </span>
           {entry.accountName && (
             <span className="rounded px-1.5 py-0.5 text-xs font-medium shrink-0 text-gray-500 bg-gray-100">
               {entry.accountName}
             </span>
           )}
+          <span className={`rounded px-1.5 py-0.5 text-xs font-medium shrink-0 ${KIND_COLOR[entry.kind]}`}>
+            {KIND_LABEL[entry.kind]}
+          </span>
           {isBuySell && entry.shares !== null && (
             <span className="text-sm text-gray-700 truncate">
               {fmtNumber(entry.shares, shareDecimals)}股
