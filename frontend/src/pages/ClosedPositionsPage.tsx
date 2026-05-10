@@ -159,17 +159,29 @@ function MarketSection({
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => (
-              <ClosedRow key={r.ticker} {...r} isTW={isTW} onSelect={() => onSelect(r.ticker)} />
-            ))}
+            {rows.length === 0 ? (
+              <tr>
+                <td colSpan={4} className="px-4 py-8 text-center text-sm text-gray-400">此帳戶無已出清紀錄</td>
+              </tr>
+            ) : (
+              rows.map((r) => (
+                <ClosedRow key={r.ticker} {...r} isTW={isTW} onSelect={() => onSelect(r.ticker)} />
+              ))
+            )}
           </tbody>
         </table>
       </div>
       {/* Mobile card list */}
       <div className="sm:hidden space-y-3">
-        {rows.map((r) => (
-          <ClosedRow key={r.ticker} {...r} isTW={isTW} onSelect={() => onSelect(r.ticker)} />
-        ))}
+        {rows.length === 0 ? (
+          <div className="rounded-xl border border-gray-200 bg-white px-4 py-8 text-center text-sm text-gray-400">
+            此帳戶無已出清紀錄
+          </div>
+        ) : (
+          rows.map((r) => (
+            <ClosedRow key={r.ticker} {...r} isTW={isTW} onSelect={() => onSelect(r.ticker)} />
+          ))
+        )}
       </div>
     </div>
   )
@@ -200,6 +212,12 @@ export default function ClosedPositionsPage() {
     return calculatePortfolio([...filteredTW, ...filteredUS], dividends, prices, usdToTwd)
   })()
 
+  // Use unfiltered data to decide which sections to show
+  const allClosedPositions = data?.positions.filter(p => p.sharesHeld <= 1e-9) ?? []
+  const hasTWSection = allClosedPositions.some(p => p.ticker.endsWith('.TW') || p.ticker.endsWith('.TWO'))
+  const hasUSSection = allClosedPositions.some(p => !p.ticker.endsWith('.TW') && !p.ticker.endsWith('.TWO'))
+
+  // Use filtered data for actual rows
   const closedPositions = filteredPortfolio?.positions.filter(p => p.sharesHeld <= 1e-9) ?? []
   const twRows = closedPositions.filter(p => p.ticker.endsWith('.TW') || p.ticker.endsWith('.TWO'))
   const usRows = closedPositions.filter(p => !p.ticker.endsWith('.TW') && !p.ticker.endsWith('.TWO'))
@@ -236,7 +254,7 @@ export default function ClosedPositionsPage() {
         <div className="py-16 text-center text-red-500 text-sm">載入失敗，請重新整理</div>
       )}
 
-      {!isLoading && !isError && closedPositions.length === 0 && (
+      {!isLoading && !isError && allClosedPositions.length === 0 && (
         <div className="py-16 text-center">
           <div className="text-4xl mb-3">📭</div>
           <div className="text-gray-500 text-sm">尚無已出清的股票</div>
@@ -245,7 +263,7 @@ export default function ClosedPositionsPage() {
 
       {!isLoading && !isError && (
         <>
-          {twRows.length > 0 && (
+          {hasTWSection && (
             <MarketSection
               title="TW"
               rows={twRows}
@@ -255,7 +273,7 @@ export default function ClosedPositionsPage() {
               onSelectAccount={setSelectedTWAccount}
             />
           )}
-          {usRows.length > 0 && (
+          {hasUSSection && (
             <MarketSection
               title="US"
               rows={usRows}

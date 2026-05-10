@@ -230,11 +230,17 @@ function PositionTable({ title, positions, onSelect, exchangeRate, accounts, sel
             </tr>
           </thead>
           <tbody>
-            {positions.map((pos) => (
-              <PositionRow key={pos.ticker} pos={pos} isTW={isTW} onSelect={onSelect} exchangeRate={exchangeRate} />
-            ))}
+            {positions.length === 0 ? (
+              <tr>
+                <td colSpan={8} className="px-4 py-8 text-center text-sm text-gray-400">此帳戶無持倉紀錄</td>
+              </tr>
+            ) : (
+              positions.map((pos) => (
+                <PositionRow key={pos.ticker} pos={pos} isTW={isTW} onSelect={onSelect} exchangeRate={exchangeRate} />
+              ))
+            )}
           </tbody>
-          <tfoot>
+          {positions.length > 0 && <tfoot>
             <tr className="border-t-2 border-gray-200 bg-gray-50 text-sm font-semibold">
               <td className="px-4 py-3 text-gray-700">小計</td>
               <td /><td /><td />
@@ -263,16 +269,22 @@ function PositionTable({ title, positions, onSelect, exchangeRate, accounts, sel
                 {toTwd(subtotalDividends) && <div className="text-xs text-gray-400 font-normal">{toTwd(subtotalDividends)}</div>}
               </td>
             </tr>
-          </tfoot>
+          </tfoot>}
         </table>
       </div>
       {/* Mobile card list */}
       <div className="sm:hidden space-y-3">
-        {positions.map((pos) => (
-          <PositionRow key={pos.ticker} pos={pos} isTW={isTW} onSelect={onSelect} exchangeRate={exchangeRate} />
-        ))}
+        {positions.length === 0 ? (
+          <div className="rounded-xl border border-gray-200 bg-white px-4 py-8 text-center text-sm text-gray-400">
+            此帳戶無持倉紀錄
+          </div>
+        ) : (
+          positions.map((pos) => (
+            <PositionRow key={pos.ticker} pos={pos} isTW={isTW} onSelect={onSelect} exchangeRate={exchangeRate} />
+          ))
+        )}
         {/* Mobile subtotal card */}
-        <div className="border border-gray-200 rounded-xl p-4 bg-gray-50">
+        {positions.length > 0 && <div className="border border-gray-200 rounded-xl p-4 bg-gray-50">
           <div className="text-xs font-semibold text-gray-500 mb-2">小計</div>
           <div className="grid grid-cols-3 gap-2 text-xs text-gray-600">
             <div>
@@ -304,7 +316,7 @@ function PositionTable({ title, positions, onSelect, exchangeRate, accounts, sel
               )}
             </div>
           </div>
-        </div>
+        </div>}
       </div>
     </div>
   )
@@ -343,6 +355,12 @@ export default function HoldingsPage() {
     return data.positions.find(p => p.ticker === ticker)?.sharesHeld ?? 0
   }
 
+  // Use unfiltered data to decide which market sections to show
+  const allHeldPositions = data?.positions.filter(p => p.sharesHeld > 1e-9) ?? []
+  const hasTWSection = allHeldPositions.some(p => p.ticker.endsWith('.TW') || p.ticker.endsWith('.TWO'))
+  const hasUSSection = allHeldPositions.some(p => !p.ticker.endsWith('.TW') && !p.ticker.endsWith('.TWO'))
+
+  // Use filtered data for actual position rows
   const heldPositions = filteredPortfolio?.positions.filter(p => p.sharesHeld > 1e-9) ?? []
   const twPositions = heldPositions.filter(p => p.ticker.endsWith('.TW') || p.ticker.endsWith('.TWO'))
   const usPositions = heldPositions.filter(p => !p.ticker.endsWith('.TW') && !p.ticker.endsWith('.TWO'))
@@ -401,8 +419,8 @@ export default function HoldingsPage() {
         <div className="py-16 text-center text-red-500 text-sm">載入失敗，請重新整理</div>
       )}
 
-      {/* Empty state */}
-      {!isLoading && !isError && heldPositions.length === 0 && (
+      {/* Empty state — only when no positions at all (unfiltered) */}
+      {!isLoading && !isError && allHeldPositions.length === 0 && (
         <div className="py-16 text-center">
           <div className="text-4xl mb-3">📊</div>
           <div className="text-gray-500 text-sm">尚無持倉紀錄</div>
@@ -413,7 +431,7 @@ export default function HoldingsPage() {
       {/* Position tables by market */}
       {!isLoading && !isError && (
         <>
-          {twPositions.length > 0 && (
+          {hasTWSection && (
             <PositionTable
               title="TW"
               positions={twPositions}
@@ -423,7 +441,7 @@ export default function HoldingsPage() {
               onSelectAccount={setSelectedTWAccount}
             />
           )}
-          {usPositions.length > 0 && (
+          {hasUSSection && (
             <PositionTable
               title="US"
               positions={usPositions}
