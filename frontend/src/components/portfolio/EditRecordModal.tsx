@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query'
 import { deleteTransaction } from '../../api/transactions'
 import { deleteDividend } from '../../api/dividends'
+import { listAccounts } from '../../api/accounts'
 import TransactionForm from './TransactionForm'
 import DividendForm from './DividendForm'
 import type { HistoryEntry } from '../../hooks/useStockHistory'
@@ -23,6 +24,12 @@ const TITLE: Record<HistoryEntry['kind'], string> = {
 export default function EditRecordModal({ entry, currentPosition, onClose }: Props) {
   const queryClient = useQueryClient()
   const [confirmDelete, setConfirmDelete] = useState(false)
+
+  const { data: accounts = [] } = useQuery({
+    queryKey: ['accounts'],
+    queryFn: listAccounts,
+    staleTime: 60_000,
+  })
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['transactions'] })
@@ -66,6 +73,7 @@ export default function EditRecordModal({ entry, currentPosition, onClose }: Pro
             initialData={entry.raw as Dividend}
             onSuccess={handleSuccess}
             onCancel={onClose}
+            accounts={accounts}
           />
         ) : (
           <TransactionForm
@@ -73,6 +81,7 @@ export default function EditRecordModal({ entry, currentPosition, onClose }: Pro
             currentPosition={currentPosition}
             onSuccess={handleSuccess}
             onCancel={onClose}
+            accounts={accounts}
           />
         )}
 
