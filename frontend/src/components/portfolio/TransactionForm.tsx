@@ -12,6 +12,7 @@ interface Props {
   currentPosition?: (ticker: string) => number
   initialData?: Transaction
   lockedTicker?: string
+  lockedMarket?: 'TW' | 'US'
   accounts?: Account[]
 }
 
@@ -21,7 +22,7 @@ function inferMarket(ticker: string): 'TW' | 'US' | null {
   return 'US'
 }
 
-export default function TransactionForm({ onSuccess, onCancel, currentPosition, initialData, lockedTicker, accounts = [] }: Props) {
+export default function TransactionForm({ onSuccess, onCancel, currentPosition, initialData, lockedTicker, lockedMarket, accounts = [] }: Props) {
   const isEdit = !!initialData
   const tickerLocked = !!lockedTicker && !isEdit
   const queryClient = useQueryClient()
@@ -51,9 +52,9 @@ export default function TransactionForm({ onSuccess, onCancel, currentPosition, 
     }, 300)
   }, [ticker, isEdit])
 
-  // Filter accounts by inferred market
+  // Filter accounts by market: use lockedMarket when available, otherwise infer from ticker
   const activeTicker = tickerLocked ? lockedTicker! : ticker
-  const market = inferMarket(activeTicker)
+  const market = lockedMarket ?? (isEdit ? null : inferMarket(activeTicker))
   const filteredAccounts = market ? accounts.filter(a => a.market === market) : accounts
 
   // Auto-select first account when list becomes available and nothing is selected

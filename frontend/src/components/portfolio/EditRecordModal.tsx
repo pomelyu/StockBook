@@ -31,6 +31,9 @@ export default function EditRecordModal({ entry, currentPosition, onClose }: Pro
     staleTime: 60_000,
   })
 
+  const rawAccountId = (entry.raw as { account_id?: string }).account_id
+  const lockedMarket = accounts.find(a => a.id === rawAccountId)?.market
+
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['transactions'] })
     queryClient.invalidateQueries({ queryKey: ['dividends'] })
@@ -74,6 +77,7 @@ export default function EditRecordModal({ entry, currentPosition, onClose }: Pro
             onSuccess={handleSuccess}
             onCancel={onClose}
             accounts={accounts}
+            lockedMarket={lockedMarket}
           />
         ) : (
           <TransactionForm
@@ -82,6 +86,7 @@ export default function EditRecordModal({ entry, currentPosition, onClose }: Pro
             onSuccess={handleSuccess}
             onCancel={onClose}
             accounts={accounts}
+            lockedMarket={lockedMarket}
           />
         )}
 

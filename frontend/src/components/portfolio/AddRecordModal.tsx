@@ -10,9 +10,10 @@ interface Props {
   onClose: () => void
   currentPosition: (ticker: string) => number
   lockedTicker?: string
+  market?: 'TW' | 'US'
 }
 
-export default function AddRecordModal({ onClose, currentPosition, lockedTicker }: Props) {
+export default function AddRecordModal({ onClose, currentPosition, lockedTicker, market }: Props) {
   const [step, setStep] = useState<Step>('choose')
 
   const accountsQuery = useQuery({
@@ -82,6 +83,7 @@ export default function AddRecordModal({ onClose, currentPosition, lockedTicker 
             onCancel={() => setStep('choose')}
             currentPosition={currentPosition}
             lockedTicker={lockedTicker}
+            lockedMarket={market}
             accounts={accounts}
           />
         )}
@@ -91,6 +93,7 @@ export default function AddRecordModal({ onClose, currentPosition, lockedTicker 
             onSuccess={handleSuccess}
             onCancel={() => setStep('choose')}
             lockedTicker={lockedTicker}
+            lockedMarket={market}
             accounts={accounts}
           />
         )}

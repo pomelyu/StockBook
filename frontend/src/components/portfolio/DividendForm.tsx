@@ -11,6 +11,7 @@ interface Props {
   onCancel: () => void
   initialData?: Dividend
   lockedTicker?: string
+  lockedMarket?: 'TW' | 'US'
   accounts?: Account[]
 }
 
@@ -26,7 +27,7 @@ function inferMarket(ticker: string): 'TW' | 'US' | null {
   return 'US'
 }
 
-export default function DividendForm({ onSuccess, onCancel, initialData, lockedTicker, accounts = [] }: Props) {
+export default function DividendForm({ onSuccess, onCancel, initialData, lockedTicker, lockedMarket, accounts = [] }: Props) {
   const isEdit = !!initialData
   const tickerLocked = !!lockedTicker && !isEdit
   const queryClient = useQueryClient()
@@ -57,7 +58,7 @@ export default function DividendForm({ onSuccess, onCancel, initialData, lockedT
   }, [ticker, isEdit])
 
   const activeTicker = tickerLocked ? lockedTicker! : ticker
-  const market = inferMarket(activeTicker)
+  const market = lockedMarket ?? (isEdit ? null : inferMarket(activeTicker))
   const filteredAccounts = market ? accounts.filter(a => a.market === market) : accounts
 
   // Auto-select first account when list becomes available and nothing is selected

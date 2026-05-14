@@ -210,6 +210,7 @@ export default function StockDetailPage() {
           onClose={() => setShowAddModal(false)}
           currentPosition={currentPosition}
           lockedTicker={ticker}
+          market={isTW ? 'TW' : 'US'}
         />
       )}
     </div>
